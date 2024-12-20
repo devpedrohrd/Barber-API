@@ -15,12 +15,56 @@ model User {
   picture   String?  @db.VarChar(255)
   role      Role     @default(client)
   isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime? @default(now())
+  updatedAt DateTime? @updatedAt
+
+  clientAppointments Appointment[] @relation("ClientAppointments")
+  barberAppointments Appointment[] @relation("BarberAppointments")
 }
 
 enum Role {
   client
   barber
   admin
+}
+
+model Service {
+  id          Int         @id @default(autoincrement())
+  name        ServiceType @unique
+  price       Float       @db.DoublePrecision
+  duration    Int         @db.Integer
+  description String?     @db.Text
+  createdAt   DateTime?    @default(now())
+  updatedAt   DateTime?    @updatedAt
+
+  Appointment Appointment[]
+}
+
+enum ServiceType {
+  HAIRCUT
+  BEARD
+  SHAVE
+}
+
+model Appointment {
+  id           Int              @id @default(autoincrement())
+  date         DateTime
+  status       AppointmentStatus @default(PENDING)
+  createdAt    DateTime?         @default(now())
+  updatedAt    DateTime?         @updatedAt
+  
+  userClientId Int
+  userBarberId Int
+  serviceId    Int
+
+  userClient   User @relation("ClientAppointments", fields: [userClientId], references: [id])
+  userBarber   User @relation("BarberAppointments", fields: [userBarberId], references: [id])
+  service      Service @relation(fields: [serviceId], references: [id])
+}
+
+enum AppointmentStatus {
+  PENDING
+  CONFIRMED
+  CANCELED
+  COMPLETED
 }

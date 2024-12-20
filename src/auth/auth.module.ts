@@ -9,15 +9,15 @@ import { PrismaService } from 'src/Config/DB/Prisma.service'
 
 @Module({
   controllers: [AuthController],
-  providers: [AuthService,GoogleStrategy,UserService,PrismaService],
+  providers: [AuthService, GoogleStrategy, UserService, PrismaService],
   imports: [
     PassportModule.register({
-      defaultStrategy:'google'
+      defaultStrategy: 'google',
     }),
     JwtModule.register({
       secret: process.env.JWT_SECRET,
       signOptions: { expiresIn: process.env.JWT_EXPIRES_IN },
-    })
-  ]
+    }),
+  ],
 })
 export class AuthModule {}
