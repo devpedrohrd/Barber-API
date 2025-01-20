@@ -1,12 +1,4 @@
-import {
-  Body,
-  Controller,
-  Delete,
-  Get,
-  Param,
-  Patch,
-  Post,
-} from '@nestjs/common'
+import { Body, Controller, Delete, Get, Param, Patch, Post } from '@nestjs/common'
 
 import { BarberService } from './barber.service'
 import { CreateBarberDto } from './dto/create-barber.dto'
@@ -27,20 +19,20 @@ export class BarberController {
   }
 
   @Get(':id')
-  async findOne(@Param('id') id: number) {
+  async findOne(@Param('id') id: string) {
     return this.barberService.findOne(id)
   }
 
   @Patch(':id')
   async update(
-    @Param('id') id: number,
+    @Param('id') id: string,
     @Body() updateBarberDto: UpdateBarberDto,
   ) {
     return this.barberService.update(id, updateBarberDto)
   }
 
   @Delete(':id')
-  async remove(@Param('id') id: number) {
+  async remove(@Param('id') id: string) {
     return this.barberService.remove(id)
   }
 }

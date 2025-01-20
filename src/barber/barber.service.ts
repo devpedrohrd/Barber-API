@@ -10,7 +10,7 @@ import {
 } from '@nestjs/common'
 import { InjectModel } from '@nestjs/mongoose'
 import * as bcrypt from 'bcrypt'
-import { Model } from 'mongoose'
+import { Model, mongo } from 'mongoose'
 
 @Injectable()
 export class BarberService {
@@ -47,9 +47,9 @@ export class BarberService {
     }
   }
 
-  async findOne(id: number) {
+  async findOne(id: string) {
     try {
-      const barber = await this.barberModel.findById(id)
+      const barber = await this.barberModel.findById(new mongo.ObjectId(id))
 
       return barber ? barber : {}
     } catch (error) {
@@ -57,7 +57,7 @@ export class BarberService {
     }
   }
 
-  async update(id: number, updateBarberDto: UpdateBarberDto) {
+  async update(id: string, updateBarberDto: UpdateBarberDto) {
     try {
       if (updateBarberDto.password) {
         updateBarberDto.password = await bcrypt.hash(
@@ -67,7 +67,7 @@ export class BarberService {
       }
 
       const barber = await this.barberModel.findByIdAndUpdate(
-        id,
+        new mongo.ObjectId(id),
         updateBarberDto,
       )
 
@@ -81,15 +81,41 @@ export class BarberService {
     }
   }
 
-  async remove(id: number) {
+  async remove(id: string) {
     try {
-      const barber = await this.barberModel.findByIdAndDelete(id)
+      const barber = await this.barberModel.findByIdAndDelete(
+        new mongo.ObjectId(id),
+      )
 
       if (!barber) {
         throw new NotFoundException('BARBER_NOT_FOUND')
       }
 
       return barber
+    } catch (error) {
+      throw new InternalServerErrorException(error.message)
+    }
+  }
+
+  async findBarberByEmail(email: string) {
+    try {
+      const barber = await this.barberModel.findOne({ email })
+
+      return barber ? barber : null
+    } catch (error) {
+      throw new InternalServerErrorException(error.message)
+    }
+  }
+
+  async validateBarber(email: string, password: string) {
+    try {
+      const barber = await this.findBarberByEmail(email)
+
+      if (barber && (await bcrypt.compare(password, barber.password))) {
+        return barber
+      }
+
+      throw new BadRequestException('INVALID_CREDENTIALS')
     } catch (error) {
       throw new InternalServerErrorException(error.message)
     }
