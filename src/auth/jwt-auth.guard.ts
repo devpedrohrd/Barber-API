@@ -2,7 +2,6 @@ import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common'
 import { Reflector } from '@nestjs/core'
 import { JwtService } from '@nestjs/jwt'
 import { AuthGuard } from '@nestjs/passport'
-import { Request } from 'express'
 
 @Injectable()
 export class JwtAuthGuard extends AuthGuard('jwt') implements CanActivate {
@@ -13,21 +12,28 @@ export class JwtAuthGuard extends AuthGuard('jwt') implements CanActivate {
     super()
   }
 
-  canActivate(context: ExecutionContext) {
-    const request = context.switchToHttp().getRequest<Request>()
-    const token = request.cookies.access_token
-
-    if (!token) {
-      return false
-    }
-
+  async canActivate(context: ExecutionContext): Promise<boolean> {
     try {
-      const decoded = this.jwtService.verify(token, {
-        secret: process.env.JWT_ACCESS_SECRET,
-      })
-      request.user = decoded
-      return true
-    } catch (err) {
+      const request = context.switchToHttp().getRequest()
+      const token = (request.headers['authorization'] as string).replace(
+        new RegExp(/Bearer /gi),
+        '',
+      )
+      if (!token) {
+        return false
+      }
+      try {
+        const user = await this.jwtService.verify(token, {
+          secret: process.env.JWT_ACCESS_SECRET,
+        })
+        request.user = user
+        const requiredRoles = this.reflector.get('role', context.getHandler())
+        return user.roles.some((el) => requiredRoles.includes(el))
+      } catch (error) {
+        return false
+      }
+    } catch (error) {
+      console.error(error.message)
       return false
     }
   }
