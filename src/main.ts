@@ -5,7 +5,9 @@ import * as dotenv from 'dotenv'
 import { AppModule } from './app.module'
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule)
+  const app = await NestFactory.create(AppModule, {
+    logger: ['error', 'warn', 'log'],
+  })
 
   dotenv.config()
 
@@ -19,6 +21,6 @@ async function bootstrap() {
       },
     }),
   )
-  await app.listen(process.env.PORT || 4000)
+  // await app.listen(4000)
 }
 bootstrap()
