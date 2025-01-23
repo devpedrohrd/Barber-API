@@ -1,3 +1,6 @@
+import { SearchUserFilter } from './dto/filterUserDTO'
+import { UpdateUserDto } from './dto/update-user.dto'
+import { UserService } from './user.service'
 import {
   Body,
   Controller,
@@ -10,14 +13,10 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common'
-
-import { SearchUserFilter } from './dto/filterUserDTO'
-import { UpdateUserDto } from './dto/update-user.dto'
-import { UserService } from './user.service'
+import { Request } from 'express'
+import { Roles } from 'src/auth/dto/roles'
 import { JwtAuthGuard } from 'src/auth/jwt-auth.guard'
 import { Role } from 'src/decorators/roles'
-import { Roles } from 'src/auth/dto/roles'
-import { Request } from 'express'
 
 @Controller('user')
 @UseGuards(JwtAuthGuard)

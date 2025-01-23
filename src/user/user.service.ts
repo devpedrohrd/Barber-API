@@ -5,12 +5,12 @@ import {
 } from '@nestjs/common'
 import { InjectModel } from '@nestjs/mongoose'
 import { FilterQuery, Model, mongo } from 'mongoose'
+import { Roles } from 'src/auth/dto/roles'
 import { getFiltersMapped } from 'src/utils/filters'
 
 import { SearchUserFilter } from './dto/filterUserDTO'
 import { UpdateUserDto } from './dto/update-user.dto'
 import { User } from './entities/user.entity'
-import { Roles } from 'src/auth/dto/roles'
 
 @Injectable()
 export class UserService {

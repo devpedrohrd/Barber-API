@@ -5,13 +5,13 @@ import {
 } from '@nestjs/common'
 import { InjectModel } from '@nestjs/mongoose'
 import { Model, mongo } from 'mongoose'
+import { Roles } from 'src/auth/dto/roles'
+import { getFiltersMapped } from 'src/utils/filters'
 
 import { CreateAppointmentDto } from './dto/create-appointment.dto'
+import { SearchAppointmentFilter } from './dto/filterAppointment'
 import { UpdateAppointmentDto } from './dto/update-appointment.dto'
 import { Appointment } from './entities/appointment.entity'
-import { SearchAppointmentFilter } from './dto/filterAppointment'
-import { getFiltersMapped } from 'src/utils/filters'
-import { Roles } from 'src/auth/dto/roles'
 
 @Injectable()
 export class AppointmentService {
@@ -82,6 +82,10 @@ export class AppointmentService {
   async remove(id: string, user: any) {
     const appointment = this.appointmentModel.findByIdAndDelete(id)
 
+    if (!appointment) {
+      throw new BadRequestException('APPOINTMENT_NOT_FOUND')
+    }
+
     if (user.role === Roles.BARBER) {
       if ((await appointment).barberId !== user.id) {
         throw new BadRequestException(
@@ -94,10 +98,6 @@ export class AppointmentService {
           `YOU_ARE_NOT_THE_CLIENT_OF_THIS_APPOINTMENT`,
         )
       }
-    }
-
-    if (!appointment) {
-      throw new BadRequestException('APPOINTMENT_NOT_FOUND')
     }
 
     return appointment

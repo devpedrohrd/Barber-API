@@ -1,17 +1,18 @@
+import { AuthService } from './auth.service'
+import { LoginDto } from './dto/loginBarberDTO'
 import {
   Body,
   Controller,
   Get,
+  Param,
   Post,
+  Query,
   Req,
   Res,
   UseGuards,
 } from '@nestjs/common'
 import { AuthGuard } from '@nestjs/passport'
 import { Request, Response } from 'express'
-
-import { AuthService } from './auth.service'
-import { LoginDto } from './dto/loginBarberDTO'
 
 @Controller('auth')
 export class AuthController {
@@ -49,5 +50,21 @@ export class AuthController {
     })
 
     return res.status(200).send({ message: 'LOGIN_SUCCESS', user })
+  }
+
+  @Post('link-to-reset-password')
+  async resetPassword(@Body() body: { email: string }) {
+    return this.authService.sendLinkToResetPassword(body.email)
+  }
+
+  @Post('reset-password')
+  async resetPasswordWithToken(
+    @Query('token') token: string,
+    @Body() password: string,
+    @Res() response: Response,
+  ) {
+    const props = { token, password, response }
+
+    return this.authService.resetPasswordWithToken(props)
   }
 }

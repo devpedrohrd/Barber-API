@@ -1,8 +1,15 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post } from '@nestjs/common'
-
 import { BarberService } from './barber.service'
 import { CreateBarberDto } from './dto/create-barber.dto'
 import { UpdateBarberDto } from './dto/update-barber.dto'
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Patch,
+  Post,
+} from '@nestjs/common'
 
 @Controller('barber')
 export class BarberController {

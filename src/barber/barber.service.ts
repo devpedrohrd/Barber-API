@@ -1,6 +1,3 @@
-import { CreateBarberDto } from './dto/create-barber.dto'
-import { UpdateBarberDto } from './dto/update-barber.dto'
-import { Barber } from './entities/barber.entity'
 import {
   BadRequestException,
   ConflictException,
@@ -8,9 +5,16 @@ import {
   InternalServerErrorException,
   NotFoundException,
 } from '@nestjs/common'
+import * as dotenv from 'dotenv'
+
+dotenv.config()
 import { InjectModel } from '@nestjs/mongoose'
 import * as bcrypt from 'bcrypt'
 import { Model, mongo } from 'mongoose'
+
+import { CreateBarberDto } from './dto/create-barber.dto'
+import { UpdateBarberDto } from './dto/update-barber.dto'
+import { Barber } from './entities/barber.entity'
 
 @Injectable()
 export class BarberService {
@@ -67,8 +71,8 @@ export class BarberService {
       }
 
       const barber = await this.barberModel.findByIdAndUpdate(
-        new mongo.ObjectId(id),
-        updateBarberDto,
+        { _id: new mongo.ObjectId(id) },
+        { $set: updateBarberDto },
       )
 
       if (!barber) {
@@ -107,7 +111,7 @@ export class BarberService {
     }
   }
 
-  async validateBarber(email: string, password: string) {
+  async validateBarber(email: string, password: string): Promise<Barber> {
     try {
       const barber = await this.findBarberByEmail(email)
 
