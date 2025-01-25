@@ -2,10 +2,9 @@ import { Module } from '@nestjs/common'
 import { ConfigModule, ConfigService } from '@nestjs/config'
 import { MongooseModule } from '@nestjs/mongoose'
 
+import { AppointmentModule } from './appointment/appointment.module'
 import { AuthModule } from './auth/auth.module'
-import { BarberModule } from './barber/barber.module'
-import { UserModule } from './user/user.module';
-import { AppointmentModule } from './appointment/appointment.module';
+import { UserModule } from './user/user.module'
 
 @Module({
   imports: [
@@ -26,7 +25,6 @@ import { AppointmentModule } from './appointment/appointment.module';
       }),
     }),
     AuthModule,
-    BarberModule,
     UserModule,
     AppointmentModule,
   ],

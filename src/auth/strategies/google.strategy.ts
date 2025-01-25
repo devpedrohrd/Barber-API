@@ -33,6 +33,9 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
       email: emails[0].value,
       displayName,
       avatarUrl: photos[0].value || 'default-avatar-url',
+      role: Roles.CLIENT,
+      phone: '',
+      description: '',
     })
 
     const payload = {

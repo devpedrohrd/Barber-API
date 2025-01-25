@@ -9,7 +9,7 @@ export class Appointment extends Document {
   @Prop({ required: true, type: Types.ObjectId, ref: 'User' })
   costumer: Types.ObjectId
 
-  @Prop({ required: true, type: Types.ObjectId, ref: 'Barber' })
+  @Prop({ required: true, type: Types.ObjectId, ref: 'User' })
   barberId: Types.ObjectId
 
   @Prop({

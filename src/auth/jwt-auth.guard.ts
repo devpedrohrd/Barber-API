@@ -6,8 +6,8 @@ import { AuthGuard } from '@nestjs/passport'
 @Injectable()
 export class JwtAuthGuard extends AuthGuard('jwt') implements CanActivate {
   constructor(
-    private reflector: Reflector,
-    private jwtService: JwtService,
+    private reflector: Reflector, //Usado para acessar os metadados como os roles
+    private jwtService: JwtService, //Usado para verificar o token e extrair o payload
   ) {
     super()
   }

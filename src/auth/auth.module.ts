@@ -3,7 +3,6 @@ import { Module } from '@nestjs/common'
 import { ConfigModule, ConfigService } from '@nestjs/config'
 import { JwtService } from '@nestjs/jwt'
 import { PassportModule } from '@nestjs/passport'
-import { BarberModule } from 'src/barber/barber.module'
 import { UserModule } from 'src/user/user.module'
 
 import { AuthController } from './auth.controller'
@@ -14,7 +13,6 @@ import { GoogleStrategy } from './strategies/google.strategy'
   controllers: [AuthController],
   providers: [AuthService, JwtService, GoogleStrategy],
   imports: [
-    BarberModule,
     PassportModule,
     UserModule,
     ConfigModule.forRoot(),

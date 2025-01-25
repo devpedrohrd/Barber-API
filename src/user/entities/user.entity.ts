@@ -1,5 +1,6 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose'
 import { Document } from 'mongoose'
+import { Roles } from 'src/auth/dto/roles'
 
 @Schema({ timestamps: true })
 export class User extends Document {
@@ -20,6 +21,12 @@ export class User extends Document {
 
   @Prop({ required: false })
   phone?: string
+
+  @Prop({ required: false })
+  role?: Roles
+
+  @Prop({ required: false })
+  description?: string
 }
 
 export const UserSchema = SchemaFactory.createForClass(User)

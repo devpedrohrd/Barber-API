@@ -5,6 +5,7 @@ import {
 } from '@nestjs/common'
 import { InjectModel } from '@nestjs/mongoose'
 import { FilterQuery, Model, mongo } from 'mongoose'
+import { Appointment } from 'src/appointment/entities/appointment.entity'
 import { Roles } from 'src/auth/dto/roles'
 import { getFiltersMapped } from 'src/utils/filters'
 
@@ -14,7 +15,11 @@ import { User } from './entities/user.entity'
 
 @Injectable()
 export class UserService {
-  constructor(@InjectModel('User') private readonly userModel: Model<User>) {}
+  constructor(
+    @InjectModel('User') private readonly userModel: Model<User>,
+    @InjectModel('Appointment')
+    private readonly appointmentModel: Model<Appointment>,
+  ) {}
 
   async findOnCreate(user: Partial<User>) {
     const userExists = await this.userModel.findOne({ googleId: user.googleId })
@@ -55,6 +60,10 @@ export class UserService {
   }
 
   async remove(id: string) {
+    await this.appointmentModel.deleteMany({
+      $or: [{ barberId: id }, { clientId: id }],
+    })
+
     const deletedUser = await this.userModel.findByIdAndDelete(id)
 
     return deletedUser
@@ -90,7 +99,9 @@ export class UserService {
       .skip(filterMapped.page * filterMapped.limit)
       .limit(filterMapped.limit)
 
+    const count = await this.userModel.countDocuments(where)
+
     const users = await usersQuery
-    return users ?? []
+    return users ? { count, users } : { count: 0, users: [] }
   }
 }
