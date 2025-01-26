@@ -11,6 +11,11 @@ async function bootstrap() {
 
   dotenv.config()
 
+  app.enableCors({
+    origin: 'http://localhost:3001', // Porta onde o Next.js roda
+    credentials: true, // Se precisar enviar cookies/sessões
+  })
+
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
