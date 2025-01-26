@@ -67,7 +67,6 @@ export class AppointmentService {
         )
       }
     }
-
     const updatedAppointment = await this.appointmentModel
       .findOneAndUpdate(
         { _id: id },
@@ -109,7 +108,12 @@ export class AppointmentService {
     const where = {
       ...(date || costumer || barberId || status || service || isPaid || id
         ? {
-            ...(date && { date }),
+            ...(date && {
+              date: {
+                $gte: new Date(new Date(date).setHours(0, 0, 0, 0)),
+                $lt: new Date(new Date(date).setHours(23, 59, 59, 999)),
+              },
+            }),
             ...(costumer && { costumer }),
             ...(barberId && { barberId }),
             ...(status && { status }),

@@ -28,6 +28,7 @@ export class CreateAppointmentDto {
   barberId: string
 
   @IsString()
+  @IsOptional()
   status: string
 
   @IsEnum(service)

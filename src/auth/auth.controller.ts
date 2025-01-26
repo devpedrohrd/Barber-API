@@ -44,6 +44,6 @@ export class AuthController {
       expires: new Date(Date.now() + 604800000),
     })
 
-    return res.status(200).send({ message: 'LOGIN_SUCCESS', user })
+    return res.redirect('http://localhost:3001')
   }
 }
