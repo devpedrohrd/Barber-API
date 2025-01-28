@@ -1,6 +1,3 @@
-import { SearchUserFilter } from './dto/filterUserDTO'
-import { UpdateUserDto } from './dto/update-user.dto'
-import { UserService } from './user.service'
 import {
   Body,
   Controller,
@@ -18,7 +15,11 @@ import { Roles } from 'src/auth/dto/roles'
 import { JwtAuthGuard } from 'src/auth/jwt-auth.guard'
 import { Role } from 'src/decorators/roles'
 
-@Controller('user')
+import { SearchUserFilter } from './dto/filterUserDTO'
+import { UpdateUserDto } from './dto/update-user.dto'
+import { UserService } from './user.service'
+
+@Controller('users')
 @UseGuards(JwtAuthGuard)
 export class UserController {
   constructor(private readonly userService: UserService) {}

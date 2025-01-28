@@ -54,16 +54,24 @@ export class AppointmentService {
   ) {
     const appointment = await this.appointmentModel.findById(id).exec()
 
-    if (user.role === Roles.BARBER) {
-      if (appointment.barberId !== user.id) {
+    if (user.role !== Roles.ADMIN) {
+      if (
+        user.role === Roles.BARBER &&
+        appointment.barberId &&
+        appointment.barberId !== user.id
+      ) {
         throw new BadRequestException(
-          `YOU_ARE_NOT_THE_BARBER_OF_THIS_APPOINTMENT`,
+          'YOU_ARE_NOT_THE_BARBER_OF_THIS_APPOINTMENT',
         )
       }
-    } else if (user.role === Roles.CLIENT) {
-      if (appointment.costumer !== user.id) {
+
+      if (
+        user.role === Roles.CLIENT &&
+        appointment.costumer &&
+        appointment.costumer !== user.id
+      ) {
         throw new BadRequestException(
-          `YOU_ARE_NOT_THE_CLIENT_OF_THIS_APPOINTMENT`,
+          'YOU_ARE_NOT_THE_CLIENT_OF_THIS_APPOINTMENT',
         )
       }
     }
@@ -79,31 +87,53 @@ export class AppointmentService {
   }
 
   async remove(id: string, user: any) {
-    const appointment = this.appointmentModel.findByIdAndDelete(id)
+    const appointment = this.appointmentModel.findById(id).exec()
 
     if (!appointment) {
       throw new BadRequestException('APPOINTMENT_NOT_FOUND')
     }
 
-    if (user.role === Roles.BARBER) {
-      if ((await appointment).barberId !== user.id) {
+    if (user.role !== Roles.ADMIN) {
+      if (
+        user.role === Roles.BARBER &&
+        (await appointment).barberId &&
+        (await appointment).barberId !== user.id
+      ) {
         throw new BadRequestException(
-          `YOU_ARE_NOT_THE_BARBER_OF_THIS_APPOINTMENT`,
+          'YOU_ARE_NOT_THE_BARBER_OF_THIS_APPOINTMENT',
         )
       }
-    } else if (user.role === Roles.CLIENT) {
-      if ((await appointment).costumer !== user.id) {
+
+      if (
+        user.role === Roles.CLIENT &&
+        (await appointment).costumer &&
+        (await appointment).costumer !== user.id
+      ) {
         throw new BadRequestException(
-          `YOU_ARE_NOT_THE_CLIENT_OF_THIS_APPOINTMENT`,
+          'YOU_ARE_NOT_THE_CLIENT_OF_THIS_APPOINTMENT',
         )
       }
     }
 
-    return appointment
+    return await this.appointmentModel.deleteOne({ _id: id }).exec()
   }
 
-  async searchAppointment(filter: SearchAppointmentFilter) {
+  async searchAppointment(filter: SearchAppointmentFilter, user: any) {
     const { date, costumer, barberId, status, service, isPaid, id } = filter
+
+    if (user.role !== Roles.ADMIN) {
+      if (user.role === Roles.BARBER && barberId && barberId !== user.id) {
+        throw new BadRequestException(
+          'YOU_ARE_NOT_THE_BARBER_OF_THIS_APPOINTMENT',
+        )
+      }
+
+      if (user.role === Roles.CLIENT && costumer && costumer !== user.id) {
+        throw new BadRequestException(
+          'YOU_ARE_NOT_THE_CLIENT_OF_THIS_APPOINTMENT',
+        )
+      }
+    }
 
     const where = {
       ...(date || costumer || barberId || status || service || isPaid || id

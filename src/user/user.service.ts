@@ -66,10 +66,10 @@ export class UserService {
   }
 
   async searchUser(filter: SearchUserFilter) {
-    const { displayName, email, id, isActive, phone } = filter
+    const { displayName, email, id, isActive, phone, role } = filter
 
     const where: FilterQuery<User> = {
-      ...(displayName || email || phone || id || isActive
+      ...(displayName || email || phone || id || isActive || role
         ? {
             ...(displayName && {
               displayName: { $regex: new RegExp(displayName, 'i') },
@@ -77,6 +77,8 @@ export class UserService {
             ...(email && { email: { $regex: new RegExp(email, 'i') } }),
             ...(phone && { phone: { $regex: new RegExp(phone, 'i') } }),
             ...(id && { _id: id }),
+            ...(isActive && { isActive }),
+            ...(role && { role }),
           }
         : {}),
     }

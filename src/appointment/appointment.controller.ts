@@ -10,17 +10,17 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common'
+import { Request } from 'express'
+import { Roles } from 'src/auth/dto/roles'
+import { JwtAuthGuard } from 'src/auth/jwt-auth.guard'
+import { Role } from 'src/decorators/roles'
 
 import { AppointmentService } from './appointment.service'
 import { CreateAppointmentDto } from './dto/create-appointment.dto'
-import { UpdateAppointmentDto } from './dto/update-appointment.dto'
 import { SearchAppointmentFilter } from './dto/filterAppointment'
-import { Role } from 'src/decorators/roles'
-import { Roles } from 'src/auth/dto/roles'
-import { JwtAuthGuard } from 'src/auth/jwt-auth.guard'
-import { Request } from 'express'
+import { UpdateAppointmentDto } from './dto/update-appointment.dto'
 
-@Controller('appointment')
+@Controller('appointments')
 @UseGuards(JwtAuthGuard)
 export class AppointmentController {
   constructor(private readonly appointmentService: AppointmentService) {}
@@ -38,8 +38,11 @@ export class AppointmentController {
 
   @Get('searchAppointment')
   @Role(Roles.ADMIN, Roles.BARBER)
-  async searchAppointment(@Query() filter: SearchAppointmentFilter) {
-    return this.appointmentService.searchAppointment(filter)
+  async searchAppointment(
+    @Query() filter: SearchAppointmentFilter,
+    @Req() req: Request,
+  ) {
+    return this.appointmentService.searchAppointment(filter, req.user)
   }
 
   @Get(':id')
