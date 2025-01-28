@@ -13,7 +13,7 @@ async function bootstrap() {
 
   app.enableCors({
     credentials: true,
-    origin: 'http://localhost:3001',
+    origin: process.env.FRONTEND_URL,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
     allowedHeaders: ['Content-Type', 'Authorization'],
   })
@@ -28,6 +28,6 @@ async function bootstrap() {
       },
     }),
   )
-  await app.listen(3000)
+  // await app.listen(3000)
 }
 bootstrap()
