@@ -34,13 +34,13 @@ export class AuthController {
 
     res.cookie('access_token', jwtAccessToken, {
       httpOnly: true,
-      sameSite: 'none',
+      sameSite: 'lax',
       expires: new Date(Date.now() + 900000),
     })
 
     res.cookie('refresh_token', jwtRefreshToken, {
       httpOnly: true,
-      sameSite: 'none',
+      sameSite: 'lax',
       expires: new Date(Date.now() + 604800000),
     })
 
