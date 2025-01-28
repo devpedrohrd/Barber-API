@@ -21,7 +21,7 @@ export class UserService {
     const userExists = await this.userModel.findOne({ googleId: user.googleId })
 
     if (userExists) {
-      Redirect('https://barber-shop-sigma-ashen.vercel.app')
+      Redirect(process.env.FRONTEND_URL)
     }
 
     const newUser = new this.userModel(user).save()
