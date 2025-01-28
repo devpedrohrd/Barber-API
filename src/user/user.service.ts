@@ -1,8 +1,4 @@
-import {
-  BadRequestException,
-  ConflictException,
-  Injectable,
-} from '@nestjs/common'
+import { BadRequestException, Injectable, Redirect } from '@nestjs/common'
 import { InjectModel } from '@nestjs/mongoose'
 import { FilterQuery, Model, mongo } from 'mongoose'
 import { Appointment } from 'src/appointment/entities/appointment.entity'
@@ -25,7 +21,7 @@ export class UserService {
     const userExists = await this.userModel.findOne({ googleId: user.googleId })
 
     if (userExists) {
-      throw new ConflictException('USER_ALREADY_EXISTS')
+      Redirect('https://barber-shop-sigma-ashen.vercel.app')
     }
 
     const newUser = new this.userModel(user).save()
