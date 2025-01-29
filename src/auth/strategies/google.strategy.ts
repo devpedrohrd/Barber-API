@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common'
 import { JwtService } from '@nestjs/jwt'
 import { PassportStrategy } from '@nestjs/passport'
+import { Response } from 'express'
 import { Strategy, VerifyCallback } from 'passport-google-oauth20'
 import { UserService } from 'src/user/user.service'
 
@@ -25,6 +26,7 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
     refreshToken: string,
     profile: any,
     done: VerifyCallback,
+    res: Response,
   ): Promise<any> {
     const { id, displayName, emails, photos } = profile
 
@@ -54,6 +56,20 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
       expiresIn: '7d',
     })
 
-    done(null, { user, jwtAccessToken, jwtRefreshToken })
+    res.cookie('access_token', jwtAccessToken, {
+      httpOnly: true,
+      sameSite: 'strict',
+      expires: new Date(Date.now() + 900000),
+    })
+
+    res.cookie('refresh_token', jwtRefreshToken, {
+      httpOnly: true,
+      sameSite: 'strict',
+      expires: new Date(Date.now() + 604800000),
+    })
+
+    done(null, user)
+
+    res.redirect(process.env.FRONTEND_URL)
   }
 }

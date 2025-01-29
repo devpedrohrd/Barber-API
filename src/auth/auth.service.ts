@@ -29,13 +29,20 @@ export class AuthService {
         expiresIn: '15m',
       })
 
-      res.cookie('access_token', newAccessToken, {
+      const cookie = res.cookie('access_token', newAccessToken, {
         httpOnly: true,
-        sameSite: 'none',
+        sameSite: 'strict',
         expires: new Date(Date.now() + 900000),
       })
 
-      res.send({ message: 'REFRESH_TOKEN_SUCCESS' })
+      if (!cookie) {
+        throw new HttpException(
+          'COOKIE_NOT_SET',
+          HttpStatus.INTERNAL_SERVER_ERROR,
+        )
+      }
+
+      res.redirect(process.env.FRONTEND_URL)
     } catch (e) {
       console.error(e)
       throw new HttpException('REFRESH_TOKEN_INVALID', HttpStatus.UNAUTHORIZED)
