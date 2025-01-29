@@ -34,12 +34,14 @@ export class AuthController {
 
     res.cookie('access_token', jwtAccessToken, {
       httpOnly: true,
-      sameSite: 'strict',
+      secure: true,
+      sameSite: 'none',
     })
 
     res.cookie('refresh_token', jwtRefreshToken, {
       httpOnly: true,
-      sameSite: 'strict',
+      secure: true,
+      sameSite: 'none',
     })
 
     res.redirect(process.env.FRONTEND_URL)
