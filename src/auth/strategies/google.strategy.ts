@@ -26,7 +26,6 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
     refreshToken: string,
     profile: any,
     done: VerifyCallback,
-    res: Response,
   ): Promise<any> {
     const { id, displayName, emails, photos } = profile
 
@@ -56,20 +55,6 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
       expiresIn: '7d',
     })
 
-    res.cookie('access_token', jwtAccessToken, {
-      httpOnly: true,
-      sameSite: 'strict',
-      expires: new Date(Date.now() + 900000),
-    })
-
-    res.cookie('refresh_token', jwtRefreshToken, {
-      httpOnly: true,
-      sameSite: 'strict',
-      expires: new Date(Date.now() + 604800000),
-    })
-
-    done(null, user)
-
-    res.redirect(process.env.FRONTEND_URL)
+    done(null, { user, jwtAccessToken, jwtRefreshToken })
   }
 }
