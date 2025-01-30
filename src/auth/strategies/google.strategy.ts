@@ -1,7 +1,6 @@
 import { Injectable } from '@nestjs/common'
 import { JwtService } from '@nestjs/jwt'
 import { PassportStrategy } from '@nestjs/passport'
-import { Response } from 'express'
 import { Strategy, VerifyCallback } from 'passport-google-oauth20'
 import { UserService } from 'src/user/user.service'
 
