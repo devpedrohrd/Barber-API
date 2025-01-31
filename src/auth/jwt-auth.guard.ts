@@ -13,38 +13,53 @@ import { Roles } from './dto/roles'
 @Injectable()
 export class JwtAuthGuard extends AuthGuard('jwt') implements CanActivate {
   constructor(
-    private reflector: Reflector, //Usado para acessar os metadados como os roles
-    private jwtService: JwtService, //Usado para verificar o token e extrair o payload
+    private reflector: Reflector, // Acessa os metadados (roles)
+    private jwtService: JwtService, // Verifica o token
   ) {
     super()
   }
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
+    const request = context.switchToHttp().getRequest()
+    const authorization = request.headers['authorization']
+
+    if (!authorization || !authorization.startsWith('Bearer ')) {
+      throw new ForbiddenException('Token de autenticação ausente ou inválido')
+    }
+
+    const token = authorization.replace('Bearer ', '')
+    let user: any
+
+    try {
+      user = await this.jwtService.verify(token, {
+        secret: process.env.JWT_ACCESS_SECRET,
+      })
+      request.user = user // Adiciona o usuário à requisição
+    } catch (error) {
+      throw new ForbiddenException('Token inválido ou expirado')
+    }
+
     const requiredRoles = this.reflector.getAllAndOverride<Roles[]>('role', [
       context.getHandler(),
       context.getClass(),
     ])
-    if (!requiredRoles) {
-      return true
+
+    if (!requiredRoles || requiredRoles.length === 0) {
+      return true // Se nenhuma role for exigida, permite acesso
     }
 
-    const request = context.switchToHttp().getRequest()
-    const token = request.cookies['access_token']
-
-    if (!token) {
-      throw new ForbiddenException('No token found')
+    if (!user.role) {
+      // Alterado para verificar "role" no singular
+      throw new ForbiddenException('Usuário sem permissão')
     }
-    try {
-      const decoded = this.jwtService.verify(token, {
-        secret: process.env.JWT_ACCESS_SECRET,
-      })
 
-      const userRole = decoded.role
-
-      return requiredRoles.includes(userRole)
-    } catch (error) {
-      console.error(error.message)
-      return false
+    const hasRole = requiredRoles.includes(user.role) // Agora verifica "role" e não "roles"
+    if (!hasRole) {
+      throw new ForbiddenException(
+        `Acesso negado! É necessário ser ${requiredRoles.join(', ')}`,
+      )
     }
+
+    return true
   }
 }

@@ -28,7 +28,7 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
   ): Promise<any> {
     const { id, displayName, emails, photos } = profile
 
-    const user = await this.userService.findOnCreate({
+    let user = await this.userService.findOnCreate({
       googleId: id,
       email: emails[0].value,
       displayName,
@@ -38,10 +38,17 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
       description: '',
     })
 
+    let isFirstLogin = user.isFirstLogin
+
+    if (isFirstLogin) {
+      user = await this.userService.markFirstLoginCompleted(user.googleId)
+      isFirstLogin = user.isFirstLogin
+    }
+
     const payload = {
       sub: user.googleId,
       email: user.email,
-      role: Roles.CLIENT,
+      role: user.role,
     }
 
     const jwtAccessToken = this.jwtService.sign(payload, {
@@ -54,6 +61,6 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
       expiresIn: '7d',
     })
 
-    done(null, { user, jwtAccessToken, jwtRefreshToken })
+    done(null, { user, jwtAccessToken, jwtRefreshToken, isFirstLogin })
   }
 }

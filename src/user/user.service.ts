@@ -1,13 +1,12 @@
+import { SearchUserFilter } from './dto/filterUserDTO'
+import { UpdateUserDto } from './dto/update-user.dto'
+import { User } from './entities/user.entity'
 import { BadRequestException, Injectable, Redirect } from '@nestjs/common'
 import { InjectModel } from '@nestjs/mongoose'
 import { FilterQuery, Model, mongo } from 'mongoose'
 import { Appointment } from 'src/appointment/entities/appointment.entity'
 import { Roles } from 'src/auth/dto/roles'
 import { getFiltersMapped } from 'src/utils/filters'
-
-import { SearchUserFilter } from './dto/filterUserDTO'
-import { UpdateUserDto } from './dto/update-user.dto'
-import { User } from './entities/user.entity'
 
 @Injectable()
 export class UserService {
@@ -21,12 +20,12 @@ export class UserService {
     const userExists = await this.userModel.findOne({ googleId: user.googleId })
 
     if (userExists) {
-      Redirect(process.env.FRONTEND_URL)
+      return userExists
     }
 
-    const newUser = new this.userModel(user).save()
+    const newUser = new this.userModel({ ...user, isFirstLogin: true })
 
-    return newUser
+    return newUser.save()
   }
 
   async findAll() {
@@ -48,7 +47,7 @@ export class UserService {
 
     const updatedUser = await this.userModel.findByIdAndUpdate(
       { _id: new mongo.ObjectId(id) },
-      { $set: updateUserDto },
+      { $set: { ...updateUserDto, isFirstLogin: true } },
       { new: true },
     )
 
@@ -101,5 +100,17 @@ export class UserService {
 
     const users = await usersQuery
     return users ? { count, users } : { count: 0, users: [] }
+  }
+
+  async markFirstLoginCompleted(googleId: string) {
+    const updatedUser = await this.userModel.findOneAndUpdate(
+      { googleId },
+      { $set: { isFirstLogin: false } },
+      { new: true },
+    )
+
+    console.log(updatedUser)
+
+    return updatedUser
   }
 }

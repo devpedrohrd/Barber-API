@@ -1,4 +1,4 @@
-import { HttpException, HttpStatus, Injectable, Req, Res } from '@nestjs/common'
+import { Injectable, Req, Res, UnauthorizedException } from '@nestjs/common'
 import { JwtService } from '@nestjs/jwt'
 import { Request, Response } from 'express'
 
@@ -6,46 +6,44 @@ import { Request, Response } from 'express'
 export class AuthService {
   constructor(private jwtService: JwtService) {}
 
+  private generateTokens(payload: any) {
+    const accessToken = this.jwtService.sign(payload, {
+      secret: process.env.JWT_ACCESS_SECRET,
+      expiresIn: '15m',
+    })
+
+    const refreshToken = this.jwtService.sign(payload, {
+      secret: process.env.JWT_REFRESH_SECRET,
+      expiresIn: '7d',
+    })
+
+    return { accessToken, refreshToken }
+  }
+
   async refreshToken(@Req() req: Request, @Res() res: Response) {
-    const refreshToken = req.cookies['refresh_token']
-
-    if (!refreshToken) {
-      throw new HttpException('REFRESH_TOKEN_NOT_FOUND', HttpStatus.NOT_FOUND)
-    }
-
     try {
-      const decoded = this.jwtService.verify(refreshToken, {
+      const refreshToken = req.headers['x-refresh-token'] as string
+
+      if (!refreshToken) {
+        throw new UnauthorizedException('Refresh token não encontrado')
+      }
+
+      const payload = this.jwtService.verify(refreshToken, {
         secret: process.env.JWT_REFRESH_SECRET,
       })
 
-      const payload = {
-        email: decoded.email,
-        sub: decoded.sub,
-        role: decoded.role,
-      }
-
-      const newAccessToken = this.jwtService.sign(payload, {
-        secret: process.env.JWT_ACCESS_SECRET,
-        expiresIn: '15m',
+      const newTokens = this.generateTokens({
+        sub: payload.sub,
+        email: payload.email,
+        role: payload.role,
       })
 
-      const cookie = res.cookie('access_token', newAccessToken, {
-        httpOnly: true,
-        sameSite: 'strict',
-        expires: new Date(Date.now() + 900000),
+      return res.json({
+        accessToken: newTokens.accessToken,
+        refreshToken: newTokens.refreshToken,
       })
-
-      if (!cookie) {
-        throw new HttpException(
-          'COOKIE_NOT_SET',
-          HttpStatus.INTERNAL_SERVER_ERROR,
-        )
-      }
-
-      res.redirect(process.env.FRONTEND_URL)
-    } catch (e) {
-      console.error(e)
-      throw new HttpException('REFRESH_TOKEN_INVALID', HttpStatus.UNAUTHORIZED)
+    } catch (error) {
+      throw new UnauthorizedException('Refresh token inválido ou expirado')
     }
   }
 }

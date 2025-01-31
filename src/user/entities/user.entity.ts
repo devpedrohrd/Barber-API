@@ -27,6 +27,9 @@ export class User extends Document {
 
   @Prop({ required: false })
   description?: string
+
+  @Prop({ default: true })
+  isFirstLogin: boolean
 }
 
 export const UserSchema = SchemaFactory.createForClass(User)

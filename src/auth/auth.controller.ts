@@ -29,21 +29,19 @@ export class AuthController {
 
   @Get('google/redirect')
   @UseGuards(AuthGuard('google'))
-  async googleAuthRedirect(@Req() req, @Res() res: Response) {
-    const { jwtAccessToken, jwtRefreshToken } = req.user
+  async googleAuthRedirect(@Req() req: Request, @Res() res: Response) {
+    const { jwtAccessToken, jwtRefreshToken, user, isFirstLogin } =
+      req.user as any
 
-    res.cookie('access_token', jwtAccessToken, {
-      httpOnly: true,
-      secure: true,
-      sameSite: 'strict',
+    res.setHeader('Authorization', `Bearer ${jwtAccessToken}`)
+    res.setHeader('X-Refresh-Token', jwtRefreshToken)
+
+    res.json({
+      message: 'Login com Google realizado com sucesso',
+      jwtAccessToken,
+      jwtRefreshToken,
+      isFirstLogin,
+      role: user.role,
     })
-
-    res.cookie('refresh_token', jwtRefreshToken, {
-      httpOnly: true,
-      secure: true,
-      sameSite: 'strict',
-    })
-
-    res.redirect(process.env.FRONTEND_URL)
   }
 }
