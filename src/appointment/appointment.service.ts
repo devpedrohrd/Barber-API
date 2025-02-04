@@ -4,7 +4,7 @@ import {
   Injectable,
 } from '@nestjs/common'
 import { InjectModel } from '@nestjs/mongoose'
-import { Model, mongo } from 'mongoose'
+import { Model } from 'mongoose'
 import { Roles } from 'src/auth/dto/roles'
 import { getFiltersMapped } from 'src/utils/filters'
 
@@ -121,18 +121,11 @@ export class AppointmentService {
   async searchAppointment(filter: SearchAppointmentFilter, user: any) {
     const { date, costumer, barberId, status, service, isPaid, id } = filter
 
-    if (user.role !== Roles.ADMIN) {
-      if (user.role === Roles.BARBER && barberId && barberId !== user.id) {
-        throw new BadRequestException(
-          'YOU_ARE_NOT_THE_BARBER_OF_THIS_APPOINTMENT',
-        )
-      }
-
-      if (user.role === Roles.CLIENT && costumer && costumer !== user.id) {
-        throw new BadRequestException(
-          'YOU_ARE_NOT_THE_CLIENT_OF_THIS_APPOINTMENT',
-        )
-      }
+    // Restrições para que barbeiros e clientes só possam acessar seus próprios agendamentos
+    if (user.role === Roles.BARBER) {
+      filter.barberId = user.id
+    } else if (user.role === Roles.CLIENT) {
+      filter.costumer = user.id
     }
 
     const where = {
@@ -148,7 +141,7 @@ export class AppointmentService {
             ...(barberId && { barberId }),
             ...(status && { status }),
             ...(service && { service }),
-            ...(isPaid && { isPaid }),
+            ...(isPaid !== undefined && { isPaid }),
             ...(id && { _id: id }),
           }
         : {}),

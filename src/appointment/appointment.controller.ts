@@ -37,7 +37,7 @@ export class AppointmentController {
   }
 
   @Get('searchAppointment')
-  @Role(Roles.ADMIN, Roles.BARBER)
+  @Role(Roles.ADMIN, Roles.BARBER, Roles.CLIENT)
   async searchAppointment(
     @Query() filter: SearchAppointmentFilter,
     @Req() req: Request,

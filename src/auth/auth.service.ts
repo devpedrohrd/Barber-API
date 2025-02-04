@@ -22,25 +22,25 @@ export class AuthService {
 
   async refreshToken(@Req() req: Request, @Res() res: Response) {
     try {
-      const refreshToken = req.headers['x-refresh-token'] as string
+      const oldRefreshToken = req.headers['x-refresh-token'] as string
 
-      if (!refreshToken) {
+      if (!oldRefreshToken) {
         throw new UnauthorizedException('Refresh token não encontrado')
       }
 
-      const payload = this.jwtService.verify(refreshToken, {
+      const payload = this.jwtService.verify(oldRefreshToken, {
         secret: process.env.JWT_REFRESH_SECRET,
       })
 
-      const newTokens = this.generateTokens({
+      const { accessToken, refreshToken } = this.generateTokens({
         sub: payload.sub,
         email: payload.email,
         role: payload.role,
       })
 
       return res.json({
-        accessToken: newTokens.accessToken,
-        refreshToken: newTokens.refreshToken,
+        accessToken,
+        refreshToken,
       })
     } catch (error) {
       throw new UnauthorizedException('Refresh token inválido ou expirado')
