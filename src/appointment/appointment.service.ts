@@ -6,6 +6,7 @@ import {
 import { InjectModel } from '@nestjs/mongoose'
 import { Model } from 'mongoose'
 import { Roles } from 'src/auth/dto/roles'
+import { User } from 'src/user/entities/user.entity'
 import { getFiltersMapped } from 'src/utils/filters'
 
 import { CreateAppointmentDto } from './dto/create-appointment.dto'
@@ -17,9 +18,41 @@ import { Appointment } from './entities/appointment.entity'
 export class AppointmentService {
   constructor(
     @InjectModel('Appointment') private appointmentModel: Model<Appointment>,
+    @InjectModel('User') private userModel: Model<User>,
   ) {}
 
+  private async checkBarber(barberId: string) {
+    const barber = await this.userModel.findOne({ _id: barberId }).lean().exec()
+
+    if (
+      !barber &&
+      barber.role !== Roles.BARBER &&
+      barber.role !== Roles.ADMIN
+    ) {
+      throw new BadRequestException('BARBER_NOT_FOUND')
+    }
+  }
+
+  private async checkCostumer(costumerId: string) {
+    const client = await this.userModel
+      .findOne({ _id: costumerId })
+      .lean()
+      .exec()
+
+    if (
+      !client &&
+      client.role !== Roles.CLIENT &&
+      client.role !== Roles.ADMIN
+    ) {
+      throw new BadRequestException('CLIENT_NOT_FOUND')
+    }
+  }
+
   async create(createAppointmentDto: CreateAppointmentDto) {
+    await this.checkBarber(createAppointmentDto.barberId)
+
+    await this.checkCostumer(createAppointmentDto.costumer)
+
     const existingAppointment = await this.appointmentModel
       .findOne({
         date: createAppointmentDto.date,
@@ -32,7 +65,7 @@ export class AppointmentService {
       throw new ConflictException('APPOINTMENT_ALREADY_BOOKED')
     }
 
-    return new this.appointmentModel(createAppointmentDto).save()
+    return await new this.appointmentModel(createAppointmentDto).save()
   }
 
   async findAll() {
@@ -52,6 +85,10 @@ export class AppointmentService {
     updateAppointmentDto: UpdateAppointmentDto,
     user: any,
   ) {
+    await this.checkBarber(updateAppointmentDto.barberId)
+
+    await this.checkCostumer(updateAppointmentDto.costumer)
+
     const appointment = await this.appointmentModel.findById(id).exec()
 
     if (user.role !== Roles.ADMIN) {
@@ -122,10 +159,12 @@ export class AppointmentService {
     const { date, costumer, barberId, status, service, isPaid, id } = filter
 
     // Restrições para que barbeiros e clientes só possam acessar seus próprios agendamentos
-    if (user.role === Roles.BARBER) {
-      filter.barberId = user.id
-    } else if (user.role === Roles.CLIENT) {
-      filter.costumer = user.id
+    if (user.role !== Roles.ADMIN) {
+      if (user.role === Roles.BARBER) {
+        filter.barberId = user.id
+      } else if (user.role === Roles.CLIENT) {
+        filter.costumer = user.id
+      }
     }
 
     const where = {
