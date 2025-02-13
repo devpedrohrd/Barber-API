@@ -13,12 +13,14 @@ import { CreateAppointmentDto } from './dto/create-appointment.dto'
 import { SearchAppointmentFilter } from './dto/filterAppointment'
 import { UpdateAppointmentDto } from './dto/update-appointment.dto'
 import { Appointment } from './entities/appointment.entity'
+import { BarberSchedule, BarberScheduleDTO } from './entities/schedule.entity'
 
 @Injectable()
 export class AppointmentService {
   constructor(
     @InjectModel('Appointment') private appointmentModel: Model<Appointment>,
     @InjectModel('User') private userModel: Model<User>,
+    @InjectModel('BarberSchedule') private scheduleModel: Model<BarberSchedule>,
   ) {}
 
   private async checkBarber(barberId: string) {
@@ -48,10 +50,50 @@ export class AppointmentService {
     }
   }
 
+  private async checkBarberAvailability(barberId: string, date: Date) {
+    // Buscar o horário cadastrado do barbeiro
+    const barberSchedule = await this.scheduleModel
+      .findOne({ barber: barberId })
+      .lean()
+      .exec()
+
+    if (!barberSchedule) {
+      throw new BadRequestException('BARBER_SCHEDULE_NOT_FOUND')
+    }
+
+    const dayOfWeek = new Intl.DateTimeFormat('en-US', {
+      weekday: 'long',
+    }).format(date)
+
+    const availableSlot = barberSchedule.availability.find(
+      (slot) => slot.day === dayOfWeek,
+    )
+
+    if (!availableSlot) {
+      throw new BadRequestException('BARBER_NOT_AVAILABLE_THIS_DAY')
+    }
+
+    const appointmentTime = date.toISOString().split('T')[1].slice(0, 5) // Obtém a hora no formato "HH:MM"
+
+    if (
+      !(
+        appointmentTime >= availableSlot.startTime &&
+        appointmentTime < availableSlot.endTime
+      )
+    ) {
+      throw new BadRequestException('BARBER_NOT_AVAILABLE_THIS_TIME')
+    }
+  }
+
   async create(createAppointmentDto: CreateAppointmentDto) {
     await this.checkBarber(createAppointmentDto.barberId)
 
     await this.checkCostumer(createAppointmentDto.costumer)
+
+    await this.checkBarberAvailability(
+      createAppointmentDto.barberId,
+      createAppointmentDto.date,
+    )
 
     const existingAppointment = await this.appointmentModel
       .findOne({
@@ -71,7 +113,9 @@ export class AppointmentService {
   async findAll() {
     const appointments = this.appointmentModel.find().exec()
 
-    return appointments ? appointments : []
+    const count = this.appointmentModel.countDocuments().exec()
+
+    return appointments && count ? { appointments, count } : []
   }
 
   async findOne(id: string) {
@@ -206,5 +250,37 @@ export class AppointmentService {
     const appointments = await appointmentsQuery.exec()
 
     return { count, appointments }
+  }
+
+  async crateBarberSchedule(barberId: string, availability: any) {
+    await this.checkBarber(barberId)
+
+    const existingSchedule = await this.scheduleModel
+      .findOne({ barber: barberId })
+      .lean()
+      .exec()
+
+    if (existingSchedule) {
+      throw new ConflictException('BARBER_SCHEDULE_ALREADY_EXISTS')
+    }
+
+    return await new this.scheduleModel({
+      barber: barberId,
+      availability,
+    }).save()
+  }
+
+  async updateBarberSchedule(availability: BarberScheduleDTO, request: any) {
+    await this.checkBarber(request.user.id)
+
+    const updatedSchedule = await this.scheduleModel
+      .findOneAndUpdate(
+        { barber: request.user.id },
+        { $set: availability },
+        { new: true },
+      )
+      .exec()
+
+    return updatedSchedule
   }
 }

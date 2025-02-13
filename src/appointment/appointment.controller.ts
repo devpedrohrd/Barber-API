@@ -19,6 +19,7 @@ import { AppointmentService } from './appointment.service'
 import { CreateAppointmentDto } from './dto/create-appointment.dto'
 import { SearchAppointmentFilter } from './dto/filterAppointment'
 import { UpdateAppointmentDto } from './dto/update-appointment.dto'
+import { BarberScheduleDTO } from './entities/schedule.entity'
 
 @Controller('appointments')
 @UseGuards(JwtAuthGuard)
@@ -28,6 +29,18 @@ export class AppointmentController {
   @Post()
   async create(@Body() createAppointmentDto: CreateAppointmentDto) {
     return this.appointmentService.create(createAppointmentDto)
+  }
+
+  @Post('barberShedule:id')
+  @Role(Roles.BARBER, Roles.ADMIN)
+  async createBarberSchedule(
+    @Param('id') id: string,
+    @Body() createBarberScheduleDto: BarberScheduleDTO,
+  ) {
+    return this.appointmentService.crateBarberSchedule(
+      id,
+      createBarberScheduleDto,
+    )
   }
 
   @Get()
@@ -59,6 +72,18 @@ export class AppointmentController {
     @Req() req: Request,
   ) {
     return this.appointmentService.update(id, updateAppointmentDto, req.user)
+  }
+
+  @Patch('updateBarberSchedule')
+  @Role(Roles.BARBER, Roles.ADMIN)
+  async updateBarberSchedule(
+    @Body() updateBarberScheduleDto: BarberScheduleDTO,
+    @Req() req: Request,
+  ) {
+    return this.appointmentService.updateBarberSchedule(
+      updateBarberScheduleDto,
+      req,
+    )
   }
 
   @Delete(':id')
