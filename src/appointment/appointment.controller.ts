@@ -24,14 +24,9 @@ import { BarberScheduleDTO } from './entities/schedule.entity'
 @Controller('appointments')
 @UseGuards(JwtAuthGuard)
 export class AppointmentController {
-  constructor(private readonly appointmentService: AppointmentService) {}
+  constructor(private readonly appointmentService: AppointmentService) { }
 
-  @Post()
-  async create(@Body() createAppointmentDto: CreateAppointmentDto) {
-    return this.appointmentService.create(createAppointmentDto)
-  }
-
-  @Post('barberShedule:id')
+  @Post('barberShedule/:id')
   @Role(Roles.BARBER, Roles.ADMIN)
   async createBarberSchedule(
     @Param('id') id: string,
@@ -41,6 +36,10 @@ export class AppointmentController {
       id,
       createBarberScheduleDto,
     )
+  }
+  @Post()
+  async create(@Body() createAppointmentDto: CreateAppointmentDto) {
+    return this.appointmentService.create(createAppointmentDto)
   }
 
   @Get()
@@ -74,15 +73,23 @@ export class AppointmentController {
     return this.appointmentService.update(id, updateAppointmentDto, req.user)
   }
 
-  @Patch('updateBarberSchedule')
+  @Get('barberSchedule/:id')
+  @Role(Roles.BARBER, Roles.ADMIN, Roles.CLIENT)
+  async getBarberSchedule(@Param('id') id: string) {
+    return this.appointmentService.getScheduleBarber(id)
+  }
+
+  @Patch('updateBarberSchedule/:id')
   @Role(Roles.BARBER, Roles.ADMIN)
   async updateBarberSchedule(
+    @Param('id') id: string,
     @Body() updateBarberScheduleDto: BarberScheduleDTO,
     @Req() req: Request,
   ) {
     return this.appointmentService.updateBarberSchedule(
       updateBarberScheduleDto,
-      req,
+      id,
+      req
     )
   }
 
@@ -90,5 +97,11 @@ export class AppointmentController {
   @Role(Roles.ADMIN, Roles.BARBER)
   async remove(@Param('id') id: string, @Req() req: Request) {
     return this.appointmentService.remove(id, req.user)
+  }
+
+  @Delete('deleteBarberSchedule/:id')
+  @Role(Roles.ADMIN, Roles.BARBER)
+  async removeBarberSchedule(@Param('id') id: string, @Req() req: Request) {
+    return this.appointmentService.deleteBarberSchedule(id, req)
   }
 }

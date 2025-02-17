@@ -1,4 +1,6 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose'
+import { Type } from 'class-transformer'
+import { IsArray, IsDate } from 'class-validator'
 import { Document, Types } from 'mongoose'
 
 enum Days {
@@ -11,30 +13,20 @@ enum Days {
   SATURDAY = 'sábado',
 }
 
-@Schema({ timestamps: true }) // Garante createdAt e updatedAt automáticos
+@Schema({ timestamps: true })
 export class BarberSchedule extends Document {
   @Prop({ required: true, type: Types.ObjectId, ref: 'User' })
-  barber: Types.ObjectId // Referência ao barbeiro que cadastrou o horário
+  barber: Types.ObjectId
 
-  @Prop({
-    type: [
-      {
-        day: {
-          type: String,
-          required: true,
-          enum: Days,
-        },
-        startTime: { type: String, required: true },
-        endTime: { type: String, required: true },
-      },
-    ],
-    default: [],
-  })
-  availability: { day: string; startTime: string; endTime: string }[]
+  @Prop({ required: true })
+  availability: Date[]
 }
 
-export type BarberScheduleDTO = {
-  availability: { day: Days; startTime: string; endTime: string }[]
+export class BarberScheduleDTO {
+  @IsArray()
+  @IsDate({ each: true })
+  @Type(() => Date)
+  availability: Date[]
 }
 
 export const BarberScheduleSchema = SchemaFactory.createForClass(BarberSchedule)

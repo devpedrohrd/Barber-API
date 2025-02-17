@@ -21,7 +21,7 @@ export class AppointmentService {
     @InjectModel('Appointment') private appointmentModel: Model<Appointment>,
     @InjectModel('User') private userModel: Model<User>,
     @InjectModel('BarberSchedule') private scheduleModel: Model<BarberSchedule>,
-  ) {}
+  ) { }
 
   private async checkBarber(barberId: string) {
     const barber = await this.userModel.findOne({ _id: barberId }).lean().exec()
@@ -50,50 +50,10 @@ export class AppointmentService {
     }
   }
 
-  private async checkBarberAvailability(barberId: string, date: Date) {
-    // Buscar o horário cadastrado do barbeiro
-    const barberSchedule = await this.scheduleModel
-      .findOne({ barber: barberId })
-      .lean()
-      .exec()
-
-    if (!barberSchedule) {
-      throw new BadRequestException('BARBER_SCHEDULE_NOT_FOUND')
-    }
-
-    const dayOfWeek = new Intl.DateTimeFormat('en-US', {
-      weekday: 'long',
-    }).format(date)
-
-    const availableSlot = barberSchedule.availability.find(
-      (slot) => slot.day === dayOfWeek,
-    )
-
-    if (!availableSlot) {
-      throw new BadRequestException('BARBER_NOT_AVAILABLE_THIS_DAY')
-    }
-
-    const appointmentTime = date.toISOString().split('T')[1].slice(0, 5) // Obtém a hora no formato "HH:MM"
-
-    if (
-      !(
-        appointmentTime >= availableSlot.startTime &&
-        appointmentTime < availableSlot.endTime
-      )
-    ) {
-      throw new BadRequestException('BARBER_NOT_AVAILABLE_THIS_TIME')
-    }
-  }
-
   async create(createAppointmentDto: CreateAppointmentDto) {
     await this.checkBarber(createAppointmentDto.barberId)
 
     await this.checkCostumer(createAppointmentDto.costumer)
-
-    await this.checkBarberAvailability(
-      createAppointmentDto.barberId,
-      createAppointmentDto.date,
-    )
 
     const existingAppointment = await this.appointmentModel
       .findOne({
@@ -168,7 +128,7 @@ export class AppointmentService {
   }
 
   async remove(id: string, user: any) {
-    const appointment = this.appointmentModel.findById(id).exec()
+    const appointment = this.appointmentModel.findById(id).lean().exec()
 
     if (!appointment) {
       throw new BadRequestException('APPOINTMENT_NOT_FOUND')
@@ -214,19 +174,19 @@ export class AppointmentService {
     const where = {
       ...(date || costumer || barberId || status || service || isPaid || id
         ? {
-            ...(date && {
-              date: {
-                $gte: new Date(new Date(date).setHours(0, 0, 0, 0)),
-                $lt: new Date(new Date(date).setHours(23, 59, 59, 999)),
-              },
-            }),
-            ...(costumer && { costumer }),
-            ...(barberId && { barberId }),
-            ...(status && { status }),
-            ...(service && { service }),
-            ...(isPaid !== undefined && { isPaid }),
-            ...(id && { _id: id }),
-          }
+          ...(date && {
+            date: {
+              $gte: new Date(new Date(date).setHours(0, 0, 0, 0)),
+              $lt: new Date(new Date(date).setHours(23, 59, 59, 999)),
+            },
+          }),
+          ...(costumer && { costumer }),
+          ...(barberId && { barberId }),
+          ...(status && { status }),
+          ...(service && { service }),
+          ...(isPaid !== undefined && { isPaid }),
+          ...(id && { _id: id }),
+        }
         : {}),
     }
 
@@ -252,35 +212,77 @@ export class AppointmentService {
     return { count, appointments }
   }
 
-  async crateBarberSchedule(barberId: string, availability: any) {
+  async crateBarberSchedule(barberId: string, availability: BarberScheduleDTO) {
     await this.checkBarber(barberId)
 
     const existingSchedule = await this.scheduleModel
       .findOne({ barber: barberId })
-      .lean()
       .exec()
 
     if (existingSchedule) {
       throw new ConflictException('BARBER_SCHEDULE_ALREADY_EXISTS')
     }
 
-    return await new this.scheduleModel({
+    const newSchedule = new this.scheduleModel({
       barber: barberId,
-      availability,
-    }).save()
+      availability: availability.availability,
+    })
+
+    return await newSchedule.save()
   }
 
-  async updateBarberSchedule(availability: BarberScheduleDTO, request: any) {
-    await this.checkBarber(request.user.id)
+  async getScheduleBarber(barberId: string) {
+    await this.checkBarber(barberId)
+
+    const schedule = await this.scheduleModel
+      .findOne({ barber: barberId })
+      .lean()
+      .exec()
+
+    if (!schedule) {
+      throw new BadRequestException('BARBER_SCHEDULE_NOT_FOUND')
+    }
+
+    return schedule
+  }
+
+  async updateBarberSchedule(
+    availability: BarberScheduleDTO,
+    barberId: string,
+    req: any,
+  ) {
+    await this.checkBarber(barberId)
+
+    if (req.user.role !== Roles.ADMIN && req.user.id !== barberId) {
+      throw new BadRequestException('UNAUTHORIZED')
+    }
 
     const updatedSchedule = await this.scheduleModel
       .findOneAndUpdate(
-        { barber: request.user.id },
+        { barber: barberId },
         { $set: availability },
         { new: true },
       )
       .exec()
 
     return updatedSchedule
+  }
+
+  async deleteBarberSchedule(barberId: string, req: any) {
+    await this.checkBarber(barberId)
+
+    if (req.user.role !== Roles.ADMIN && req.user.id !== barberId) {
+      throw new BadRequestException('UNAUTHORIZED')
+    }
+
+    const schedule = await this.scheduleModel
+      .findOne({ barber: barberId })
+      .exec()
+
+    if (!schedule) {
+      throw new BadRequestException('BARBER_SCHEDULE_NOT_FOUND')
+    }
+
+    return await this.scheduleModel.deleteOne({ barber: barberId }).exec()
   }
 }

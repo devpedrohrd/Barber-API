@@ -14,9 +14,9 @@ import { BarberScheduleSchema } from './entities/schedule.entity'
     MongooseModule.forFeature([
       { name: 'Appointment', schema: AppointmentSchema },
       { name: 'User', schema: UserSchema },
-      { name: 'BarberSchedule', schema: BarberScheduleSchema }
+      { name: 'BarberSchedule', schema: BarberScheduleSchema },
     ]),
   ],
   exports: [AppointmentService, MongooseModule],
 })
-export class AppointmentModule { }
+export class AppointmentModule {}

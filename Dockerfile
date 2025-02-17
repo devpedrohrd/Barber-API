@@ -8,5 +8,7 @@ WORKDIR /app
 RUN apk add --no-cache git && \
     npm install -g @nestjs/cli
 
+EXPOSE 3000
+
 # Manter o container ativo
 CMD ["tail", "-f", "/dev/null"]
