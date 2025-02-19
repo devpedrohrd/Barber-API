@@ -6,10 +6,11 @@ import { JwtService } from '@nestjs/jwt'
 import { MongooseModule } from '@nestjs/mongoose'
 import { UserSchema } from 'src/user/entities/user.entity'
 import { BarberScheduleSchema } from './entities/schedule.entity'
+import { RedisCacheService } from 'src/utils/cacheConnection'
 
 @Module({
   controllers: [AppointmentController],
-  providers: [AppointmentService, JwtService],
+  providers: [AppointmentService, JwtService, RedisCacheService],
   imports: [
     MongooseModule.forFeature([
       { name: 'Appointment', schema: AppointmentSchema },
@@ -19,4 +20,4 @@ import { BarberScheduleSchema } from './entities/schedule.entity'
   ],
   exports: [AppointmentService, MongooseModule],
 })
-export class AppointmentModule {}
+export class AppointmentModule { }

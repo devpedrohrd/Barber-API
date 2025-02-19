@@ -7,10 +7,12 @@ import { AppointmentService } from 'src/appointment/appointment.service'
 import { UserSchema } from './entities/user.entity'
 import { UserController } from './user.controller'
 import { UserService } from './user.service'
+import { CacheModule } from '@nestjs/cache-manager'
+import { RedisCacheService } from 'src/utils/cacheConnection'
 
 @Module({
   controllers: [UserController],
-  providers: [UserService, JwtService],
+  providers: [UserService, JwtService, RedisCacheService],
   imports: [
     AppointmentModule,
     MongooseModule.forFeature([{ name: 'User', schema: UserSchema }]),

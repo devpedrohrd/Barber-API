@@ -14,6 +14,7 @@ import { SearchAppointmentFilter } from './dto/filterAppointment'
 import { UpdateAppointmentDto } from './dto/update-appointment.dto'
 import { Appointment } from './entities/appointment.entity'
 import { BarberSchedule, BarberScheduleDTO } from './entities/schedule.entity'
+import { RedisCacheService } from 'src/utils/cacheConnection'
 
 @Injectable()
 export class AppointmentService {
@@ -21,6 +22,7 @@ export class AppointmentService {
     @InjectModel('Appointment') private appointmentModel: Model<Appointment>,
     @InjectModel('User') private userModel: Model<User>,
     @InjectModel('BarberSchedule') private scheduleModel: Model<BarberSchedule>,
+    private readonly cacheManager: RedisCacheService,
   ) { }
 
   private async checkBarber(barberId: string) {
@@ -71,17 +73,53 @@ export class AppointmentService {
   }
 
   async findAll() {
-    const appointments = this.appointmentModel.find().exec()
+    try {
 
-    const count = this.appointmentModel.countDocuments().exec()
+      const appointmentsCached = await this.cacheManager.get('appointments')
 
-    return appointments && count ? { appointments, count } : []
+      if (appointmentsCached) {
+        console.log(`Pegando do cache`)
+
+        return appointmentsCached
+      }
+
+      const appointments = this.appointmentModel.find().exec()
+
+      await this.cacheManager.set('appointments', appointments, 60)
+
+      const count = this.appointmentModel.countDocuments().exec()
+
+      return appointments && count ? { appointments, count } : []
+
+    } catch (error) {
+      console.error(error)
+    } finally {
+      await this.cacheManager.onModuleDestroy()
+    }
   }
 
-  async findOne(id: string) {
-    const appointment = this.appointmentModel.findById({ _id: id }).exec()
 
-    return appointment ? appointment : {}
+  async findOne(id: string) {
+    try {
+      const appointmentCached = await this.cacheManager.get(`appointment:${id}`)
+
+      if (appointmentCached) {
+        console.log(`Pegando do cache`)
+
+        return appointmentCached
+      }
+
+      const appointment = this.appointmentModel.findById({ _id: id }).exec()
+
+      await this.cacheManager.set(`appointment:${id}`, appointment, 60)
+
+      return appointment ? appointment : {}
+
+    } catch (error) {
+      console.error(error)
+    } finally {
+      await this.cacheManager.onModuleDestroy()
+    }
   }
 
   async update(
