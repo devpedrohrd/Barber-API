@@ -4,6 +4,7 @@ import * as dotenv from 'dotenv'
 import helmet from 'helmet'
 
 import { AppModule } from './app.module'
+import { CacheInterceptor } from '@nestjs/cache-manager'
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, {

@@ -46,7 +46,7 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
     }
 
     const payload = {
-      sub: user.googleId,
+      id: user._id.toString(),
       email: user.email,
       role: user.role,
     }

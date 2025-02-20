@@ -13,13 +13,17 @@ import { CreateAppointmentDto } from './dto/create-appointment.dto'
 import { SearchAppointmentFilter } from './dto/filterAppointment'
 import { UpdateAppointmentDto } from './dto/update-appointment.dto'
 import { Appointment } from './entities/appointment.entity'
+import { BarberSchedule, BarberScheduleDTO } from './entities/schedule.entity'
+import { RedisCacheService } from 'src/utils/cacheConnection'
 
 @Injectable()
 export class AppointmentService {
   constructor(
     @InjectModel('Appointment') private appointmentModel: Model<Appointment>,
     @InjectModel('User') private userModel: Model<User>,
-  ) {}
+    @InjectModel('BarberSchedule') private scheduleModel: Model<BarberSchedule>,
+    private readonly cacheManager: RedisCacheService,
+  ) { }
 
   private async checkBarber(barberId: string) {
     const barber = await this.userModel.findOne({ _id: barberId }).lean().exec()
@@ -69,15 +73,53 @@ export class AppointmentService {
   }
 
   async findAll() {
-    const appointments = this.appointmentModel.find().exec()
+    try {
 
-    return appointments ? appointments : []
+      const appointmentsCached = await this.cacheManager.get('appointments')
+
+      if (appointmentsCached) {
+        console.log(`Pegando do cache`)
+
+        return appointmentsCached
+      }
+
+      const appointments = this.appointmentModel.find().exec()
+
+      await this.cacheManager.set('appointments', appointments, 60)
+
+      const count = this.appointmentModel.countDocuments().exec()
+
+      return appointments && count ? { appointments, count } : []
+
+    } catch (error) {
+      console.error(error)
+    } finally {
+      await this.cacheManager.onModuleDestroy()
+    }
   }
 
-  async findOne(id: string) {
-    const appointment = this.appointmentModel.findById({ _id: id }).exec()
 
-    return appointment ? appointment : {}
+  async findOne(id: string) {
+    try {
+      const appointmentCached = await this.cacheManager.get(`appointment:${id}`)
+
+      if (appointmentCached) {
+        console.log(`Pegando do cache`)
+
+        return appointmentCached
+      }
+
+      const appointment = this.appointmentModel.findById({ _id: id }).exec()
+
+      await this.cacheManager.set(`appointment:${id}`, appointment, 60)
+
+      return appointment ? appointment : {}
+
+    } catch (error) {
+      console.error(error)
+    } finally {
+      await this.cacheManager.onModuleDestroy()
+    }
   }
 
   async update(
@@ -124,7 +166,7 @@ export class AppointmentService {
   }
 
   async remove(id: string, user: any) {
-    const appointment = this.appointmentModel.findById(id).exec()
+    const appointment = this.appointmentModel.findById(id).lean().exec()
 
     if (!appointment) {
       throw new BadRequestException('APPOINTMENT_NOT_FOUND')
@@ -170,19 +212,19 @@ export class AppointmentService {
     const where = {
       ...(date || costumer || barberId || status || service || isPaid || id
         ? {
-            ...(date && {
-              date: {
-                $gte: new Date(new Date(date).setHours(0, 0, 0, 0)),
-                $lt: new Date(new Date(date).setHours(23, 59, 59, 999)),
-              },
-            }),
-            ...(costumer && { costumer }),
-            ...(barberId && { barberId }),
-            ...(status && { status }),
-            ...(service && { service }),
-            ...(isPaid !== undefined && { isPaid }),
-            ...(id && { _id: id }),
-          }
+          ...(date && {
+            date: {
+              $gte: new Date(new Date(date).setHours(0, 0, 0, 0)),
+              $lt: new Date(new Date(date).setHours(23, 59, 59, 999)),
+            },
+          }),
+          ...(costumer && { costumer }),
+          ...(barberId && { barberId }),
+          ...(status && { status }),
+          ...(service && { service }),
+          ...(isPaid !== undefined && { isPaid }),
+          ...(id && { _id: id }),
+        }
         : {}),
     }
 
@@ -206,5 +248,79 @@ export class AppointmentService {
     const appointments = await appointmentsQuery.exec()
 
     return { count, appointments }
+  }
+
+  async crateBarberSchedule(barberId: string, availability: BarberScheduleDTO) {
+    await this.checkBarber(barberId)
+
+    const existingSchedule = await this.scheduleModel
+      .findOne({ barber: barberId })
+      .exec()
+
+    if (existingSchedule) {
+      throw new ConflictException('BARBER_SCHEDULE_ALREADY_EXISTS')
+    }
+
+    const newSchedule = new this.scheduleModel({
+      barber: barberId,
+      availability: availability.availability,
+    })
+
+    return await newSchedule.save()
+  }
+
+  async getScheduleBarber(barberId: string) {
+    await this.checkBarber(barberId)
+
+    const schedule = await this.scheduleModel
+      .findOne({ barber: barberId })
+      .lean()
+      .exec()
+
+    if (!schedule) {
+      throw new BadRequestException('BARBER_SCHEDULE_NOT_FOUND')
+    }
+
+    return schedule
+  }
+
+  async updateBarberSchedule(
+    availability: BarberScheduleDTO,
+    barberId: string,
+    req: any,
+  ) {
+    await this.checkBarber(barberId)
+
+    if (req.user.role !== Roles.ADMIN && req.user.id !== barberId) {
+      throw new BadRequestException('UNAUTHORIZED')
+    }
+
+    const updatedSchedule = await this.scheduleModel
+      .findOneAndUpdate(
+        { barber: barberId },
+        { $set: availability },
+        { new: true },
+      )
+      .exec()
+
+    return updatedSchedule
+  }
+
+  async deleteBarberSchedule(barberId: string, req: any) {
+    await this.checkBarber(barberId)
+
+    if (req.user.role !== Roles.ADMIN && req.user.id !== barberId) {
+      throw new BadRequestException('UNAUTHORIZED')
+    }
+
+    const schedule = await this.scheduleModel
+      .findOne({ barber: barberId })
+      .exec()
+
+    if (!schedule) {
+      throw new BadRequestException('BARBER_SCHEDULE_NOT_FOUND')
+    }
+
+    return await this.scheduleModel.deleteOne({ barber: barberId }).exec()
   }
 }

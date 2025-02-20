@@ -1,19 +1,14 @@
-FROM node:23
+# Usar a versão mais recente estável do Node.js
+FROM node:alpine
 
+# Definir diretório de trabalho dentro do container
 WORKDIR /app
 
-# Instale o Git
-RUN apt-get update && apt-get install -y git
+# Instalar pacotes necessários (Git e CLI do Nest.js)
+RUN apk add --no-cache git && \
+    npm install -g @nestjs/cli
 
-# Copie os arquivos do projeto para o contêiner
-COPY . .
-
-# Instale as dependências do projeto (se houver)
-COPY package*.json ./
-RUN npm install
-
-# Exponha a porta da sua aplicação (se necessário)
 EXPOSE 3000
 
-# Comando para iniciar sua aplicação
-CMD ["npm", "start"]
+# Manter o container ativo
+CMD ["tail", "-f", "/dev/null"]
