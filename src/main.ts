@@ -4,7 +4,9 @@ import * as dotenv from 'dotenv'
 import helmet from 'helmet'
 
 import { AppModule } from './app.module'
-import { CacheInterceptor } from '@nestjs/cache-manager'
+import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger'
+import { LoggerInterceptor } from './interceptor/logger/logger.interceptor'
+import { CacheInterceptor } from './interceptor/cache/cache.interceptor'
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
@@ -14,6 +16,18 @@ async function bootstrap() {
   app.use(helmet())
 
   dotenv.config()
+
+  const config = new DocumentBuilder()
+    .setTitle('Barber API')
+    .setDescription('The Barber API description')
+    .setVersion('1.0')
+    .build()
+
+  const document = SwaggerModule.createDocument(app, config)
+
+  SwaggerModule.setup('api', app, document)
+
+  app.useGlobalInterceptors(new LoggerInterceptor(), new CacheInterceptor())
 
   app.enableCors({
     credentials: true,

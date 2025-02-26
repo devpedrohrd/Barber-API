@@ -1,4 +1,3 @@
-import { CACHE_MANAGER } from '@nestjs/cache-manager'
 import { SearchUserFilter } from './dto/filterUserDTO'
 import { UpdateUserDto } from './dto/update-user.dto'
 import { User } from './entities/user.entity'
@@ -8,7 +7,6 @@ import { FilterQuery, Model, mongo } from 'mongoose'
 import { Appointment } from 'src/appointment/entities/appointment.entity'
 import { Roles } from 'src/auth/dto/roles'
 import { getFiltersMapped } from 'src/utils/filters'
-import { RedisCacheService } from 'src/utils/cacheConnection'
 
 @Injectable()
 export class UserService {
@@ -16,8 +14,7 @@ export class UserService {
     @InjectModel('User') private readonly userModel: Model<User>,
     @InjectModel('Appointment')
     private readonly appointmentModel: Model<Appointment>,
-    private readonly cacheManager: RedisCacheService,
-  ) { }
+  ) {}
 
   async findOnCreate(user: Partial<User>) {
     const userExists = await this.userModel.findOne({ googleId: user.googleId })
@@ -32,45 +29,15 @@ export class UserService {
   }
 
   async findAll() {
-    try {
-      const usersCached = await this.cacheManager.get('users')
+    const users = await this.userModel.find()
 
-      if (usersCached) {
-        console.log(`Pegando do cache`)
-
-        return usersCached
-      }
-
-      const users = await this.userModel.find()
-
-      await this.cacheManager.set('users', users, 60)
-
-      return users ? users : []
-    } catch (error) {
-      console.error(error)
-    } finally {
-      await this.cacheManager.onModuleDestroy()
-    }
+    return users ? users : []
   }
 
   async findOne(id: string) {
-    try {
-      const userCached = await this.cacheManager.get(`user:${id}`)
-      if (userCached) {
-        console.log(`Pegando do cache`)
+    const user = await this.userModel.findById(id)
 
-        return userCached
-      }
-      const user = await this.userModel.findById(id)
-
-      await this.cacheManager.set(`user:${id}`, user, 60)
-
-      return user ? user : {}
-    } catch (error) {
-      console.error(error)
-    } finally {
-      await this.cacheManager.onModuleDestroy()
-    }
+    return user ? user : {}
   }
 
   async update(id: string, updateUserDto: UpdateUserDto, user: any) {
@@ -103,15 +70,15 @@ export class UserService {
     const where: FilterQuery<User> = {
       ...(displayName || email || phone || id || isActive || role
         ? {
-          ...(displayName && {
-            displayName: { $regex: new RegExp(displayName, 'i') },
-          }),
-          ...(email && { email: { $regex: new RegExp(email, 'i') } }),
-          ...(phone && { phone: { $regex: new RegExp(phone, 'i') } }),
-          ...(id && { _id: id }),
-          ...(isActive && { isActive }),
-          ...(role && { role }),
-        }
+            ...(displayName && {
+              displayName: { $regex: new RegExp(displayName, 'i') },
+            }),
+            ...(email && { email: { $regex: new RegExp(email, 'i') } }),
+            ...(phone && { phone: { $regex: new RegExp(phone, 'i') } }),
+            ...(id && { _id: id }),
+            ...(isActive && { isActive }),
+            ...(role && { role }),
+          }
         : {}),
     }
 
