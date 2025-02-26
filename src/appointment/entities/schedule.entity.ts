@@ -3,16 +3,6 @@ import { Type } from 'class-transformer'
 import { IsArray, IsDate } from 'class-validator'
 import { Document, Types } from 'mongoose'
 
-enum Days {
-  SUNDAY = 'domingo',
-  MONDAY = 'segunda',
-  TUESDAY = 'terça',
-  WEDNESDAY = 'quarta',
-  THURSDAY = 'quinta',
-  FRIDAY = 'sexta',
-  SATURDAY = 'sábado',
-}
-
 @Schema({ timestamps: true })
 export class BarberSchedule extends Document {
   @Prop({ required: true, type: Types.ObjectId, ref: 'User' })
