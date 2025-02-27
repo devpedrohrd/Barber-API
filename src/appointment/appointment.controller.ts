@@ -50,7 +50,7 @@ export class AppointmentController {
     @Param('id') id: string,
     @Body() createBarberScheduleDto: BarberScheduleDTO,
   ) {
-    return this.appointmentService.crateBarberSchedule(
+    return await this.appointmentService.crateBarberSchedule(
       id,
       createBarberScheduleDto,
     )
@@ -64,7 +64,7 @@ export class AppointmentController {
     type: Appointment,
   }) // Specify response type
   async create(@Body() createAppointmentDto: CreateAppointmentDto) {
-    return this.appointmentService.create(createAppointmentDto)
+    return await this.appointmentService.create(createAppointmentDto)
   }
 
   @Get()
@@ -75,7 +75,7 @@ export class AppointmentController {
   }) // Use array for multiple results
   @Role(Roles.ADMIN)
   async findAll() {
-    return this.appointmentService.findAll()
+    return await this.appointmentService.findAll()
   }
 
   @Get('searchAppointment')
@@ -90,7 +90,7 @@ export class AppointmentController {
     @Query() filter: SearchAppointmentFilter,
     @Req() req: Request,
   ) {
-    return this.appointmentService.searchAppointment(filter, req.user)
+    return await this.appointmentService.searchAppointment(filter, req.user)
   }
 
   @Get(':id')
@@ -99,7 +99,7 @@ export class AppointmentController {
   @ApiOkResponse({ description: 'Appointment details', type: Appointment })
   @Role(Roles.ADMIN, Roles.BARBER, Roles.CLIENT)
   async findOne(@Param('id') id: string) {
-    return this.appointmentService.findOne(id)
+    return await this.appointmentService.findOne(id)
   }
 
   @Patch(':id')
@@ -116,7 +116,7 @@ export class AppointmentController {
     @Body() updateAppointmentDto: UpdateAppointmentDto,
     @Req() req: Request,
   ) {
-    return this.appointmentService.update(id, updateAppointmentDto, req.user)
+    return await this.appointmentService.update(id, updateAppointmentDto, req.user)
   }
 
   @Get('barberSchedule/:id')
@@ -124,8 +124,8 @@ export class AppointmentController {
   @ApiParam({ name: 'id', description: 'ID of the barber' })
   @ApiOkResponse({ description: 'Barber schedule' }) // Consider a specific DTO for schedule data
   @Role(Roles.BARBER, Roles.ADMIN, Roles.CLIENT)
-  async getBarberSchedule(@Param('id') id: string) {
-    return this.appointmentService.getScheduleBarber(id)
+  async getBarberSchedule(@Param('id') id: string, @Req() req: Request) {
+    return await this.appointmentService.getScheduleBarber(id, req.user)
   }
 
   @Patch('updateBarberSchedule/:id')
@@ -139,10 +139,10 @@ export class AppointmentController {
     @Body() updateBarberScheduleDto: BarberScheduleDTO,
     @Req() req: Request,
   ) {
-    return this.appointmentService.updateBarberSchedule(
+    return await this.appointmentService.updateBarberSchedule(
       updateBarberScheduleDto,
       id,
-      req,
+      req.user,
     )
   }
 
@@ -152,7 +152,7 @@ export class AppointmentController {
   @ApiOkResponse({ description: 'Appointment deleted successfully' })
   @Role(Roles.ADMIN, Roles.BARBER)
   async remove(@Param('id') id: string, @Req() req: Request) {
-    return this.appointmentService.remove(id, req.user)
+    return await this.appointmentService.remove(id, req.user)
   }
 
   @Delete('deleteBarberSchedule/:id')
@@ -161,6 +161,6 @@ export class AppointmentController {
   @ApiOkResponse({ description: 'Barber schedule deleted successfully' })
   @Role(Roles.ADMIN, Roles.BARBER)
   async removeBarberSchedule(@Param('id') id: string, @Req() req: Request) {
-    return this.appointmentService.deleteBarberSchedule(id, req)
+    return await this.appointmentService.deleteBarberSchedule(id, req.user)
   }
 }

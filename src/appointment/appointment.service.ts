@@ -33,6 +33,8 @@ export class AppointmentService {
     ) {
       throw new BadRequestException('BARBER_NOT_FOUND')
     }
+
+    return barber
   }
 
   private async checkCostumer(costumerId: string) {
@@ -48,6 +50,8 @@ export class AppointmentService {
     ) {
       throw new BadRequestException('CLIENT_NOT_FOUND')
     }
+
+    return client
   }
 
   async create(createAppointmentDto: CreateAppointmentDto) {
@@ -71,15 +75,15 @@ export class AppointmentService {
   }
 
   async findAll() {
-    const appointments = this.appointmentModel.find().exec()
+    const appointments = await this.appointmentModel.find().exec()
 
-    const count = this.appointmentModel.countDocuments().exec()
+    const count = await this.appointmentModel.countDocuments().exec()
 
     return appointments && count ? { appointments, count } : []
   }
 
   async findOne(id: string) {
-    const appointment = this.appointmentModel.findById({ _id: id }).exec()
+    const appointment = await this.appointmentModel.findById({ _id: id }).exec()
 
     return appointment ? appointment : {}
   }
@@ -128,7 +132,7 @@ export class AppointmentService {
   }
 
   async remove(id: string, user: any) {
-    const appointment = this.appointmentModel.findById(id).lean().exec()
+    const appointment = await this.appointmentModel.findById(id).lean().exec()
 
     if (!appointment) {
       throw new BadRequestException('APPOINTMENT_NOT_FOUND')
@@ -137,8 +141,8 @@ export class AppointmentService {
     if (user.role !== Roles.ADMIN) {
       if (
         user.role === Roles.BARBER &&
-        (await appointment).barberId &&
-        (await appointment).barberId !== user.id
+        appointment.barberId &&
+        appointment.barberId !== user.id
       ) {
         throw new BadRequestException(
           'YOU_ARE_NOT_THE_BARBER_OF_THIS_APPOINTMENT',
@@ -147,8 +151,8 @@ export class AppointmentService {
 
       if (
         user.role === Roles.CLIENT &&
-        (await appointment).costumer &&
-        (await appointment).costumer !== user.id
+        appointment.costumer &&
+        appointment.costumer !== user.id
       ) {
         throw new BadRequestException(
           'YOU_ARE_NOT_THE_CLIENT_OF_THIS_APPOINTMENT',
@@ -194,22 +198,17 @@ export class AppointmentService {
 
     const count = await this.appointmentModel.countDocuments(where)
 
-    let appointmentsQuery = this.appointmentModel.find(where)
-
-    if (filterMapped.sortBy) {
-      const order = filterMapped.order === 'desc' ? -1 : 1
-      appointmentsQuery = appointmentsQuery.sort({
-        [filterMapped.sortBy]: order,
+    let appointmentsQuery = await this.appointmentModel
+      .find(where)
+      .sort({
+        [filterMapped.sortBy]: filterMapped.order,
       })
-    }
-
-    appointmentsQuery = appointmentsQuery
       .skip(filterMapped.page * filterMapped.limit)
       .limit(filterMapped.limit)
+      .lean()
+      .exec()
 
-    const appointments = await appointmentsQuery.exec()
-
-    return { count, appointments }
+    return { count, appointmentsQuery }
   }
 
   async crateBarberSchedule(barberId: string, availability: BarberScheduleDTO) {
@@ -231,8 +230,12 @@ export class AppointmentService {
     return await newSchedule.save()
   }
 
-  async getScheduleBarber(barberId: string) {
-    await this.checkBarber(barberId)
+  async getScheduleBarber(barberId: string, user: any) {
+    const barber = await this.checkBarber(barberId)
+
+    if (user.role !== Roles.ADMIN && barber.id !== barberId) {
+      throw new BadRequestException('UNAUTHORIZED')
+    }
 
     const schedule = await this.scheduleModel
       .findOne({ barber: barberId })
@@ -249,11 +252,11 @@ export class AppointmentService {
   async updateBarberSchedule(
     availability: BarberScheduleDTO,
     barberId: string,
-    req: any,
+    user: any,
   ) {
-    await this.checkBarber(barberId)
+    const barber = await this.checkBarber(barberId)
 
-    if (req.user.role !== Roles.ADMIN && req.user.id !== barberId) {
+    if (user.role !== Roles.ADMIN && barber.id !== barberId) {
       throw new BadRequestException('UNAUTHORIZED')
     }
 
@@ -268,10 +271,10 @@ export class AppointmentService {
     return updatedSchedule
   }
 
-  async deleteBarberSchedule(barberId: string, req: any) {
-    await this.checkBarber(barberId)
+  async deleteBarberSchedule(barberId: string, user: any) {
+    const barber = await this.checkBarber(barberId)
 
-    if (req.user.role !== Roles.ADMIN && req.user.id !== barberId) {
+    if (user.role !== Roles.ADMIN && barber.id !== barberId) {
       throw new BadRequestException('UNAUTHORIZED')
     }
 
