@@ -1,5 +1,5 @@
 {
-  "name": "Barber-API",
+  "name": "barber-api",
   "version": "0.0.1",
   "description": "",
   "author": "",
@@ -89,6 +89,9 @@
       "**/*.(t|j)s"
     ],
     "coverageDirectory": "../coverage",
-    "testEnvironment": "node"
+    "testEnvironment": "node",
+    "moduleNameMapper": {
+      "^src/(.*)$": "<rootDir>/$1"
+    }
   }
 }

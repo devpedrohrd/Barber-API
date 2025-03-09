@@ -55,23 +55,37 @@ export class AppointmentService {
   }
 
   async create(createAppointmentDto: CreateAppointmentDto) {
-    await this.checkBarber(createAppointmentDto.barberId)
+    const session = await this.appointmentModel.db.startSession()
+    session.startTransaction()
 
-    await this.checkCostumer(createAppointmentDto.costumer)
+    try {
+      await this.checkBarber(createAppointmentDto.barberId)
+      await this.checkCostumer(createAppointmentDto.costumer)
 
-    const existingAppointment = await this.appointmentModel
-      .findOne({
-        date: createAppointmentDto.date,
-        barberId: createAppointmentDto.barberId,
-      })
-      .lean()
-      .exec()
+      const existingAppointment = await this.appointmentModel
+        .findOne({
+          date: createAppointmentDto.date,
+          barberId: createAppointmentDto.barberId,
+        })
+        .session(session)
+        .lean()
+        .exec()
 
-    if (existingAppointment) {
-      throw new ConflictException('APPOINTMENT_ALREADY_BOOKED')
+      if (existingAppointment) {
+        throw new ConflictException('APPOINTMENT_ALREADY_BOOKED')
+      }
+
+      const newAppointment = new this.appointmentModel(createAppointmentDto)
+      await newAppointment.save({ session })
+
+      await session.commitTransaction()
+      return newAppointment
+    } catch (error) {
+      await session.abortTransaction()
+      throw error
+    } finally {
+      session.endSession()
     }
-
-    return await new this.appointmentModel(createAppointmentDto).save()
   }
 
   async findAll() {
@@ -93,42 +107,60 @@ export class AppointmentService {
     updateAppointmentDto: UpdateAppointmentDto,
     user: any,
   ) {
-    await this.checkBarber(updateAppointmentDto.barberId)
+    const session = await this.appointmentModel.db.startSession()
+    session.startTransaction()
+    try {
+      await this.checkBarber(updateAppointmentDto.barberId)
+      await this.checkCostumer(updateAppointmentDto.costumer)
 
-    await this.checkCostumer(updateAppointmentDto.costumer)
+      const appointment = await this.appointmentModel
+        .findById(id)
+        .session(session)
+        .exec()
 
-    const appointment = await this.appointmentModel.findById(id).exec()
-
-    if (user.role !== Roles.ADMIN) {
-      if (
-        user.role === Roles.BARBER &&
-        appointment.barberId &&
-        appointment.barberId !== user.id
-      ) {
-        throw new BadRequestException(
-          'YOU_ARE_NOT_THE_BARBER_OF_THIS_APPOINTMENT',
-        )
+      if (!appointment) {
+        throw new BadRequestException('APPOINTMENT_NOT_FOUND')
       }
 
-      if (
-        user.role === Roles.CLIENT &&
-        appointment.costumer &&
-        appointment.costumer !== user.id
-      ) {
-        throw new BadRequestException(
-          'YOU_ARE_NOT_THE_CLIENT_OF_THIS_APPOINTMENT',
-        )
+      if (user.role !== Roles.ADMIN) {
+        if (
+          user.role === Roles.BARBER &&
+          appointment.barberId &&
+          appointment.barberId !== user.id
+        ) {
+          throw new BadRequestException(
+            'YOU_ARE_NOT_THE_BARBER_OF_THIS_APPOINTMENT',
+          )
+        }
+
+        if (
+          user.role === Roles.CLIENT &&
+          appointment.costumer &&
+          appointment.costumer !== user.id
+        ) {
+          throw new BadRequestException(
+            'YOU_ARE_NOT_THE_CLIENT_OF_THIS_APPOINTMENT',
+          )
+        }
       }
+
+      const updatedAppointment = await this.appointmentModel
+        .findOneAndUpdate(
+          { _id: id },
+          { $set: updateAppointmentDto },
+          { new: true },
+        )
+        .session(session)
+        .exec()
+
+      await session.commitTransaction()
+      return updatedAppointment
+    } catch (error) {
+      await session.abortTransaction()
+      throw error
+    } finally {
+      session.endSession()
     }
-    const updatedAppointment = await this.appointmentModel
-      .findOneAndUpdate(
-        { _id: id },
-        { $set: updateAppointmentDto },
-        { new: true },
-      )
-      .exec()
-
-    return updatedAppointment
   }
 
   async remove(id: string, user: any) {
