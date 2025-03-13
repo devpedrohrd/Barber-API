@@ -62,6 +62,25 @@ export class AppointmentService {
       await this.checkBarber(createAppointmentDto.barberId)
       await this.checkCostumer(createAppointmentDto.costumer)
 
+      // Verifica se já existe um agendamento para o mesmo dia e barbeiro
+      const BarberSchedule = await this.scheduleModel.findOne({
+        barber: createAppointmentDto.barberId,
+      })
+
+      if (!BarberSchedule) {
+        throw new BadRequestException('BARBER_SCHEDULE_NOT_FOUND')
+      }
+
+      const barberAvailability = BarberSchedule.availability.find(
+        (availability) =>
+          availability.toISOString() ===
+          createAppointmentDto.date.toISOString(),
+      )
+
+      if (!barberAvailability) {
+        throw new BadRequestException('BARBER_NOT_AVAILABLE')
+      }
+
       const existingAppointment = await this.appointmentModel
         .findOne({
           date: createAppointmentDto.date,
@@ -77,6 +96,14 @@ export class AppointmentService {
 
       const newAppointment = new this.appointmentModel(createAppointmentDto)
       await newAppointment.save({ session })
+
+      // Remove the booked date from the barber's availability
+      BarberSchedule.availability = BarberSchedule.availability.filter(
+        (availability) =>
+          availability.toISOString() !==
+          createAppointmentDto.date.toISOString(),
+      )
+      await BarberSchedule.save({ session })
 
       await session.commitTransaction()
       return newAppointment
