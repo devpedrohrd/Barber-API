@@ -20,9 +20,10 @@ export class BarberScheduleDTO {
 }
 
 export class DateAvailibility {
-  @IsDate({each:true})
+  @IsDate({ each: true })
   @IsOptional()
-  date:Date[]
+  @Type(() => Date)
+  date: Date[]
 }
 
 export const BarberScheduleSchema = SchemaFactory.createForClass(BarberSchedule)

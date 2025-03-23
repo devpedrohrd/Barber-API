@@ -36,6 +36,7 @@ export class AuthService {
         sub: payload.sub,
         email: payload.email,
         role: payload.role,
+        displayName: payload.displayName,
       })
 
       return res.json({
