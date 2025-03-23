@@ -2,6 +2,8 @@ import {
   BadRequestException,
   ConflictException,
   Injectable,
+  NotFoundException,
+  UnauthorizedException,
 } from '@nestjs/common'
 import { InjectModel } from '@nestjs/mongoose'
 import { Model } from 'mongoose'
@@ -13,7 +15,7 @@ import { CreateAppointmentDto } from './dto/create-appointment.dto'
 import { SearchAppointmentFilter } from './dto/filterAppointment'
 import { UpdateAppointmentDto } from './dto/update-appointment.dto'
 import { Appointment } from './entities/appointment.entity'
-import { BarberSchedule, BarberScheduleDTO } from './entities/schedule.entity'
+import { BarberSchedule, BarberScheduleDTO, DateAvailibility } from './entities/schedule.entity'
 
 @Injectable()
 export class AppointmentService {
@@ -24,16 +26,19 @@ export class AppointmentService {
   ) {}
 
   private async checkBarber(barberId: string) {
-    const barber = await this.userModel.findOne({ _id: barberId }).lean().exec()
-
-    if (
-      !barber &&
-      barber.role !== Roles.BARBER &&
-      barber.role !== Roles.ADMIN
-    ) {
-      throw new BadRequestException('BARBER_NOT_FOUND')
+    const barber = await this.userModel.findOne({ _id: barberId }).lean().exec();
+  
+    if (!barber) {
+      throw new NotFoundException('Barbeiro não encontrado');
     }
+  
+    if (barber.role !== Roles.BARBER && barber.role !== Roles.ADMIN) {
+      throw new BadRequestException('BARBER_NOT_FOUND');
+    }
+  
+    return barber;
   }
+  
 
   private async checkCostumer(costumerId: string) {
     const client = await this.userModel
@@ -89,42 +94,42 @@ export class AppointmentService {
     updateAppointmentDto: UpdateAppointmentDto,
     user: any,
   ) {
-    await this.checkBarber(updateAppointmentDto.barberId)
+    // Se no DTO há um novo barberId ou costumer, valide-os
+    if (updateAppointmentDto.barberId) {
+      await this.checkBarber(updateAppointmentDto.barberId);
+    }
+    if (updateAppointmentDto.costumer) {
+      await this.checkCostumer(updateAppointmentDto.costumer);
+    }
 
-    await this.checkCostumer(updateAppointmentDto.costumer)
+    const appointment = await this.appointmentModel.findById(id).exec();
+    if (!appointment) {
+      throw new NotFoundException('Agendamento não encontrado');
+    }
 
-    const appointment = await this.appointmentModel.findById(id).exec()
-
+    // Validação de autorização: se não for ADMIN, somente o barbeiro ou o cliente associados podem atualizar
     if (user.role !== Roles.ADMIN) {
-      if (
-        user.role === Roles.BARBER &&
-        appointment.barberId &&
-        appointment.barberId !== user.id
-      ) {
-        throw new BadRequestException(
-          'YOU_ARE_NOT_THE_BARBER_OF_THIS_APPOINTMENT',
-        )
+      if (user.role === Roles.BARBER) {
+        if (appointment.barberId.toString() !== user.id) {
+          throw new UnauthorizedException('Você não é o barbeiro deste agendamento');
+        }
       }
-
-      if (
-        user.role === Roles.CLIENT &&
-        appointment.costumer &&
-        appointment.costumer !== user.id
-      ) {
-        throw new BadRequestException(
-          'YOU_ARE_NOT_THE_CLIENT_OF_THIS_APPOINTMENT',
-        )
+      if (user.role === Roles.CLIENT) {
+        if (appointment.costumer.toString() !== user.id) {
+          throw new UnauthorizedException('Você não é o cliente deste agendamento');
+        }
       }
     }
+
     const updatedAppointment = await this.appointmentModel
       .findOneAndUpdate(
         { _id: id },
         { $set: updateAppointmentDto },
         { new: true },
       )
-      .exec()
+      .exec();
 
-    return updatedAppointment
+    return updatedAppointment;
   }
 
   async remove(id: string, user: any) {
@@ -194,7 +199,10 @@ export class AppointmentService {
 
     const count = await this.appointmentModel.countDocuments(where)
 
-    let appointmentsQuery = this.appointmentModel.find(where)
+    let appointmentsQuery = this.appointmentModel
+      .find(where)
+      .populate('costumer', 'displayName')
+      .populate('barberId', 'displayName');
 
     if (filterMapped.sortBy) {
       const order = filterMapped.order === 'desc' ? -1 : 1
@@ -212,7 +220,7 @@ export class AppointmentService {
     return { count, appointments }
   }
 
-  async crateBarberSchedule(barberId: string, availability: BarberScheduleDTO) {
+  async createBarberSchedule(barberId: string, availability: BarberScheduleDTO) {
     await this.checkBarber(barberId)
 
     const existingSchedule = await this.scheduleModel
@@ -246,26 +254,56 @@ export class AppointmentService {
     return schedule
   }
 
-  async updateBarberSchedule(
-    availability: BarberScheduleDTO,
+  async addBarberSchedule(
+    availability: DateAvailibility,
     barberId: string,
-    req: any,
+    user: any,
   ) {
-    await this.checkBarber(barberId)
+    const {date} = availability
+    const barber = await this.checkBarber(barberId);
 
-    if (req.user.role !== Roles.ADMIN && req.user.id !== barberId) {
-      throw new BadRequestException('UNAUTHORIZED')
+    console.log(barber._id);
+
+    console.log(user.id);
+    
+    
+
+    if (user.role !== Roles.ADMIN && user.id !== barberId) {
+      throw new BadRequestException(barber);
     }
 
     const updatedSchedule = await this.scheduleModel
       .findOneAndUpdate(
         { barber: barberId },
-        { $set: availability },
+        { $push: { availability: { $each: date } } },
         { new: true },
       )
-      .exec()
+      .exec();
 
-    return updatedSchedule
+    return updatedSchedule;
+  }
+
+  async removeBarberSchedule(
+    availabilityToRemove: DateAvailibility,
+    barberId: string,
+    user: any,
+  ) {
+    const { date } = availabilityToRemove
+    const barber = await this.checkBarber(barberId);
+
+    if (user.role !== Roles.ADMIN && barber.id !== barberId) {
+      throw new BadRequestException('UNAUTHORIZED');
+    }
+
+    const updatedSchedule = await this.scheduleModel
+      .findOneAndUpdate(
+        { barber: barberId },
+        { $pull: { availability: { $in: date } } }, // Remove as datas especificadas
+        { new: true },
+      )
+      .exec();
+
+    return updatedSchedule;
   }
 
   async deleteBarberSchedule(barberId: string, req: any) {
