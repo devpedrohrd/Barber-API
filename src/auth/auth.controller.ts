@@ -36,22 +36,12 @@ export class AuthController {
     res.setHeader('Authorization', `Bearer ${jwtAccessToken}`)
     res.setHeader('X-Refresh-Token', jwtRefreshToken)
 
-    // res.json({
-    //   message: 'Login com Google realizado com sucesso',
-    //   jwtAccessToken,
-    //   jwtRefreshToken,
-    //   isFirstLogin,
-    //   role: user.role,
-    // })
-
-    const frontendUrl = new URL(process.env.FRONTEND_URL)
-
-    const redirectUrl = new URL('/login/callback', frontendUrl)
-    redirectUrl.searchParams.append('access_token', jwtAccessToken)
-    redirectUrl.searchParams.append('refresh_token', jwtRefreshToken)
-    redirectUrl.searchParams.append('is_first_login', String(isFirstLogin))
-    redirectUrl.searchParams.append('role', user.role)
-
-    return res.redirect(redirectUrl.toString())
+    res.json({
+      message: 'Login com Google realizado com sucesso',
+      jwtAccessToken,
+      jwtRefreshToken,
+      isFirstLogin,
+      role: user.role,
+    })
   }
 }

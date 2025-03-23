@@ -35,7 +35,7 @@ async function bootstrap() {
     credentials: true,
     origin: process.env.FRONTEND_URL,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Refresh-Token'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
   })
 
   app.useGlobalPipes(

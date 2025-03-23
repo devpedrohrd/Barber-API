@@ -27,23 +27,23 @@ export class Appointment extends Document {
 
   @ApiProperty({
     description: 'Status of the appointment',
-    example: 'pendente',
-    enum: ['pendente', 'confirmado', 'concluido', 'cancelado'],
+    example: 'pending',
+    enum: ['pending', 'confirmed', 'completed', 'cancelled'],
   })
   @Prop({
     required: false,
-    default: 'pendente',
-    enum: ['pendente', 'confirmado', 'concluido', 'cancelado'],
+    default: 'pending',
+    enum: ['pending', 'confirmed', 'completed', 'cancelled'],
   })
   status: string
 
   @ApiProperty({
     description: 'Type of service',
-    example: 'cabelo',
-    enum: ['cabelo', 'barba', 'cabelo e barba'],
+    example: 'haircut',
+    enum: ['haircut', 'shave', 'haircut and shave', 'beard trim'],
   })
   @Prop({
-    enum: ['cabelo', 'barba', 'cabelo e barba'],
+    enum: ['haircut', 'shave', 'haircut and shave', 'beard trim'],
     required: true,
   })
   service: string
