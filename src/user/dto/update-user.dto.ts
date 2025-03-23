@@ -1,4 +1,4 @@
-import { IsBoolean, IsEmail, IsOptional, IsString } from 'class-validator'
+import { IsBoolean, IsEmail, IsOptional, IsString, IsIn } from 'class-validator'
 
 export class UpdateUserDto {
   @IsString()
@@ -16,6 +16,10 @@ export class UpdateUserDto {
   @IsOptional()
   @IsString()
   phone: string
+  @IsOptional()
+  @IsString()
+  @IsIn(['client', 'barber', 'admin']) // Ajuste conforme sua convenção
+  role?: string;
   @IsOptional()
   @IsString()
   description: string
