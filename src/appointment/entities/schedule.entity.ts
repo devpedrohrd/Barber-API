@@ -1,6 +1,6 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose'
 import { Type } from 'class-transformer'
-import { IsArray, IsDate } from 'class-validator'
+import { IsArray, IsDate, IsOptional } from 'class-validator'
 import { Document, Types } from 'mongoose'
 
 @Schema({ timestamps: true })
@@ -17,6 +17,13 @@ export class BarberScheduleDTO {
   @IsDate({ each: true })
   @Type(() => Date)
   availability: Date[]
+}
+
+export class DateAvailibility {
+  @IsDate({each:true})
+  @IsOptional()
+  @Type(()=>Date)
+  date:Date[]
 }
 
 export const BarberScheduleSchema = SchemaFactory.createForClass(BarberSchedule)
