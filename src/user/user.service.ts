@@ -41,7 +41,7 @@ export class UserService {
   }
 
   async update(id: string, updateUserDto: UpdateUserDto, user: any) {
-    if (user.role !== Roles.CLIENT && user.id !== id) {
+    if (user.role === Roles.CLIENT && user.id !== id) {
       throw new BadRequestException('UNAUTHORIZED')
     }
 
