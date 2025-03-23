@@ -7,6 +7,7 @@ import { AppModule } from './app.module'
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger'
 import { LoggerInterceptor } from './interceptor/logger/logger.interceptor'
 import { CacheInterceptor } from './interceptor/cache/cache.interceptor'
+import * as cookieParser from 'cookie-parser'
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
@@ -14,6 +15,7 @@ async function bootstrap() {
   })
 
   app.use(helmet())
+  app.use(cookieParser())
 
   dotenv.config()
 

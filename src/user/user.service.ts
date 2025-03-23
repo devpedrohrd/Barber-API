@@ -14,7 +14,7 @@ export class UserService {
     @InjectModel('User') private readonly userModel: Model<User>,
     @InjectModel('Appointment')
     private readonly appointmentModel: Model<Appointment>,
-  ) {}
+  ) { }
 
   async findOnCreate(user: Partial<User>) {
     const userExists = await this.userModel.findOne({ googleId: user.googleId })
@@ -70,36 +70,30 @@ export class UserService {
     const where: FilterQuery<User> = {
       ...(displayName || email || phone || id || isActive || role
         ? {
-            ...(displayName && {
-              displayName: { $regex: new RegExp(displayName, 'i') },
-            }),
-            ...(email && { email: { $regex: new RegExp(email, 'i') } }),
-            ...(phone && { phone: { $regex: new RegExp(phone, 'i') } }),
-            ...(id && { _id: id }),
-            ...(isActive && { isActive }),
-            ...(role && { role }),
-          }
+          ...(displayName && {
+            displayName: { $regex: new RegExp(displayName, 'i') },
+          }),
+          ...(email && { email: { $regex: new RegExp(email, 'i') } }),
+          ...(phone && { phone: { $regex: new RegExp(phone, 'i') } }),
+          ...(id && { _id: id }),
+          ...(isActive && { isActive }),
+          ...(role && { role }),
+        }
         : {}),
     }
 
     const filterMapped = getFiltersMapped(where)
 
-    let usersQuery = this.userModel.find(where)
-
-    if (filterMapped.sortBy) {
-      const order = filterMapped.order === 'desc' ? -1 : 1
-      usersQuery = usersQuery.sort({ [filterMapped.sortBy]: order })
-    }
-
-    // Aplicando paginação
-    usersQuery = usersQuery
+    const users = await this.userModel
+      .find(where).lean()
+      .sort({ createdAt: -1 })
       .skip(filterMapped.page * filterMapped.limit)
       .limit(filterMapped.limit)
+      .exec()
 
-    const count = await this.userModel.countDocuments(where)
+    const total = await this.userModel.countDocuments(where)
 
-    const users = await usersQuery
-    return users ? { count, users } : { count: 0, users: [] }
+    return users ? { users, total } : { users: [], total: 0 }
   }
 
   async markFirstLoginCompleted(googleId: string) {
