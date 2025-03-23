@@ -30,7 +30,7 @@ import { AppointmentService } from './appointment.service'
 import { CreateAppointmentDto } from './dto/create-appointment.dto'
 import { SearchAppointmentFilter } from './dto/filterAppointment'
 import { UpdateAppointmentDto } from './dto/update-appointment.dto'
-import { BarberScheduleDTO } from './entities/schedule.entity'
+import { BarberScheduleDTO, DateAvailibility } from './entities/schedule.entity'
 import { Appointment } from '../appointment/entities/appointment.entity' // Import the Appointment schema
 
 @Controller('appointments')
@@ -40,7 +40,7 @@ import { Appointment } from '../appointment/entities/appointment.entity' // Impo
 export class AppointmentController {
   constructor(private readonly appointmentService: AppointmentService) {}
 
-  @Post('barberShedule/:id')
+  @Post('barberSchedule/:id')
   @ApiOperation({ summary: 'Create a barber schedule' }) // Operation summary
   @ApiParam({ name: 'id', description: 'ID of the barber' }) // Parameter description
   @ApiBody({ type: BarberScheduleDTO }) // Request body type
@@ -50,7 +50,7 @@ export class AppointmentController {
     @Param('id') id: string,
     @Body() createBarberScheduleDto: BarberScheduleDTO,
   ) {
-    return this.appointmentService.crateBarberSchedule(
+    return this.appointmentService.createBarberSchedule(
       id,
       createBarberScheduleDto,
     )
@@ -78,20 +78,20 @@ export class AppointmentController {
     return this.appointmentService.findAll()
   }
 
-  @Get('searchAppointment')
-  @ApiOperation({ summary: 'Search appointments' })
-  @ApiQuery({ name: 'filter', description: 'Search filter' }) // Query parameters
-  @ApiOkResponse({
-    description: 'List of matching appointments',
-    type: [Appointment],
-  })
-  @Role(Roles.ADMIN, Roles.BARBER, Roles.CLIENT)
-  async searchAppointment(
-    @Query() filter: SearchAppointmentFilter,
-    @Req() req: Request,
-  ) {
-    return this.appointmentService.searchAppointment(filter, req.user)
-  }
+    @Get('searchAppointment')
+    @ApiOperation({ summary: 'Search appointments' })
+    @ApiQuery({ name: 'filter', description: 'Search filter' }) // Query parameters
+    @ApiOkResponse({
+      description: 'List of matching appointments',
+      type: [Appointment],
+    })
+    @Role(Roles.ADMIN, Roles.BARBER, Roles.CLIENT)
+    async searchAppointment(
+      @Query() filter: SearchAppointmentFilter,
+      @Req() req: Request,
+    ) {
+      return this.appointmentService.searchAppointment(filter, req.user)
+    }
 
   @Get(':id')
   @ApiOperation({ summary: 'Get an appointment by ID' })
@@ -116,7 +116,7 @@ export class AppointmentController {
     @Body() updateAppointmentDto: UpdateAppointmentDto,
     @Req() req: Request,
   ) {
-    return this.appointmentService.update(id, updateAppointmentDto, req.user)
+    return this.appointmentService.update(id, updateAppointmentDto, req.user);
   }
 
   @Get('barberSchedule/:id')
@@ -128,21 +128,39 @@ export class AppointmentController {
     return this.appointmentService.getScheduleBarber(id)
   }
 
-  @Patch('updateBarberSchedule/:id')
+  @Patch('addDateBarberSchedule/:id')
   @ApiOperation({ summary: 'Update barber schedule' })
   @ApiParam({ name: 'id', description: 'ID of the barber' })
   @ApiBody({ type: BarberScheduleDTO })
   @ApiOkResponse({ description: 'Barber schedule updated successfully' })
   @Role(Roles.BARBER, Roles.ADMIN)
-  async updateBarberSchedule(
+  async addDateBarberSchedule(
     @Param('id') id: string,
-    @Body() updateBarberScheduleDto: BarberScheduleDTO,
+    @Body() updateBarberScheduleDto: DateAvailibility,
     @Req() req: Request,
   ) {
-    return this.appointmentService.updateBarberSchedule(
+    return this.appointmentService.addBarberSchedule(
       updateBarberScheduleDto,
       id,
-      req,
+      req['user'],
+    )
+  }
+
+  @Patch('removeDateBarberSchedule/:id')
+  @ApiOperation({ summary: 'Update barber schedule' })
+  @ApiParam({ name: 'id', description: 'ID of the barber' })
+  @ApiBody({ type: BarberScheduleDTO })
+  @ApiOkResponse({ description: 'Barber schedule updated successfully' })
+  @Role(Roles.BARBER, Roles.ADMIN)
+  async removeDateBarberSchedule(
+    @Param('id') id: string,
+    @Body() updateBarberScheduleDto: DateAvailibility,
+    @Req() req: Request,
+  ) {
+    return this.appointmentService.removeBarberSchedule(
+      updateBarberScheduleDto,
+      id,
+      req['user'],
     )
   }
 
