@@ -49,7 +49,6 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
       id: user._id.toString(),
       email: user.email,
       role: user.role,
-      displayName: user.displayName,
     }
 
     const jwtAccessToken = this.jwtService.sign(payload, {

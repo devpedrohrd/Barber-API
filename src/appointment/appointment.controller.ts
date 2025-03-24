@@ -30,7 +30,7 @@ import { AppointmentService } from './appointment.service'
 import { CreateAppointmentDto } from './dto/create-appointment.dto'
 import { SearchAppointmentFilter } from './dto/filterAppointment'
 import { UpdateAppointmentDto } from './dto/update-appointment.dto'
-import { BarberScheduleDTO, DateAvailibility } from './entities/schedule.entity'
+import { BarberScheduleDTO } from './entities/schedule.entity'
 import { Appointment } from '../appointment/entities/appointment.entity' // Import the Appointment schema
 
 @Controller('appointments')
@@ -38,9 +38,9 @@ import { Appointment } from '../appointment/entities/appointment.entity' // Impo
 @ApiBearerAuth() // Add this if JWT authentication is used
 @UseGuards(JwtAuthGuard)
 export class AppointmentController {
-  constructor(private readonly appointmentService: AppointmentService) { }
+  constructor(private readonly appointmentService: AppointmentService) {}
 
-  @Post('barberSchedule/:id')
+  @Post('barberShedule/:id')
   @ApiOperation({ summary: 'Create a barber schedule' }) // Operation summary
   @ApiParam({ name: 'id', description: 'ID of the barber' }) // Parameter description
   @ApiBody({ type: BarberScheduleDTO }) // Request body type
@@ -50,7 +50,7 @@ export class AppointmentController {
     @Param('id') id: string,
     @Body() createBarberScheduleDto: BarberScheduleDTO,
   ) {
-    return this.appointmentService.create(
+    return await this.appointmentService.crateBarberSchedule(
       id,
       createBarberScheduleDto,
     )
@@ -90,7 +90,7 @@ export class AppointmentController {
     @Query() filter: SearchAppointmentFilter,
     @Req() req: Request,
   ) {
-    return this.appointmentService.searchAppointment(filter, req.user)
+    return await this.appointmentService.searchAppointment(filter, req.user)
   }
 
   @Get(':id')
@@ -116,7 +116,7 @@ export class AppointmentController {
     @Body() updateAppointmentDto: UpdateAppointmentDto,
     @Req() req: Request,
   ) {
-    return this.appointmentService.update(id, updateAppointmentDto, req.user)
+    return await this.appointmentService.update(id, updateAppointmentDto, req.user)
   }
 
   @Get('barberSchedule/:id')
@@ -128,39 +128,21 @@ export class AppointmentController {
     return await this.appointmentService.getScheduleBarber(id, req.user)
   }
 
-  @Patch('addDateBarberSchedule/:id')
+  @Patch('updateBarberSchedule/:id')
   @ApiOperation({ summary: 'Update barber schedule' })
   @ApiParam({ name: 'id', description: 'ID of the barber' })
   @ApiBody({ type: BarberScheduleDTO })
   @ApiOkResponse({ description: 'Barber schedule updated successfully' })
   @Role(Roles.BARBER, Roles.ADMIN)
-  async addDateBarberSchedule(
+  async updateBarberSchedule(
     @Param('id') id: string,
-    @Body() updateBarberScheduleDto: DateAvailibility,
+    @Body() updateBarberScheduleDto: BarberScheduleDTO,
     @Req() req: Request,
   ) {
-    return this.appointmentService.addBarberSchedule(
+    return await this.appointmentService.updateBarberSchedule(
       updateBarberScheduleDto,
       id,
-      req['user'],
-    )
-  }
-
-  @Patch('removeDateBarberSchedule/:id')
-  @ApiOperation({ summary: 'Update barber schedule' })
-  @ApiParam({ name: 'id', description: 'ID of the barber' })
-  @ApiBody({ type: BarberScheduleDTO })
-  @ApiOkResponse({ description: 'Barber schedule updated successfully' })
-  @Role(Roles.BARBER, Roles.ADMIN)
-  async removeDateBarberSchedule(
-    @Param('id') id: string,
-    @Body() updateBarberScheduleDto: DateAvailibility,
-    @Req() req: Request,
-  ) {
-    return this.appointmentService.removeBarberSchedule(
-      updateBarberScheduleDto,
-      id,
-      req,
+      req.user,
     )
   }
 

@@ -8,9 +8,10 @@ import {
 } from 'class-validator'
 
 enum service {
-  cabelo = 'cabelo',
-  barba = 'barba',
-  cabeloEBarba = 'cabelo e barba',
+  haircut = 'haircut',
+  shave = 'shave',
+  haircutAndShave = 'haircut and shave',
+  beardTrim = 'beard trim',
 }
 
 export class CreateAppointmentDto {

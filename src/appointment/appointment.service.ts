@@ -2,8 +2,6 @@ import {
   BadRequestException,
   ConflictException,
   Injectable,
-  NotFoundException,
-  UnauthorizedException,
 } from '@nestjs/common'
 import { InjectModel } from '@nestjs/mongoose'
 import { Model } from 'mongoose'
@@ -15,7 +13,7 @@ import { CreateAppointmentDto } from './dto/create-appointment.dto'
 import { SearchAppointmentFilter } from './dto/filterAppointment'
 import { UpdateAppointmentDto } from './dto/update-appointment.dto'
 import { Appointment } from './entities/appointment.entity'
-import { BarberSchedule, BarberScheduleDTO, DateAvailibility } from './entities/schedule.entity'
+import { BarberSchedule, BarberScheduleDTO } from './entities/schedule.entity'
 
 @Injectable()
 export class AppointmentService {
@@ -26,17 +24,18 @@ export class AppointmentService {
   ) { }
 
   private async checkBarber(barberId: string) {
-    const barber = await this.userModel.findOne({ _id: barberId }).lean().exec();
+    const barber = await this.userModel.findOne({ _id: barberId }).lean().exec()
 
-    if (!barber) {
-      throw new NotFoundException('Barbeiro não encontrado');
+    if (
+      !barber &&
+      barber.role !== Roles.BARBER &&
+      barber.role !== Roles.ADMIN
+    ) {
+      throw new BadRequestException('BARBER_NOT_FOUND')
     }
 
-    if (barber.role !== Roles.BARBER && barber.role !== Roles.ADMIN) {
-      throw new BadRequestException('BARBER_NOT_FOUND');
-    }
+    return barber
   }
-
 
   private async checkCostumer(costumerId: string) {
     const client = await this.userModel
@@ -108,42 +107,60 @@ export class AppointmentService {
     updateAppointmentDto: UpdateAppointmentDto,
     user: any,
   ) {
-    await this.checkBarber(updateAppointmentDto.barberId)
+    const session = await this.appointmentModel.db.startSession()
+    session.startTransaction()
+    try {
+      await this.checkBarber(updateAppointmentDto.barberId)
+      await this.checkCostumer(updateAppointmentDto.costumer)
 
-    await this.checkCostumer(updateAppointmentDto.costumer)
+      const appointment = await this.appointmentModel
+        .findById(id)
+        .session(session)
+        .exec()
 
-    const appointment = await this.appointmentModel.findById(id).exec()
-
-    if (user.role !== Roles.ADMIN) {
-      if (
-        user.role === Roles.BARBER &&
-        appointment.barberId &&
-        appointment.barberId !== user.id
-      ) {
-        throw new BadRequestException(
-          'YOU_ARE_NOT_THE_BARBER_OF_THIS_APPOINTMENT',
-        )
+      if (!appointment) {
+        throw new BadRequestException('APPOINTMENT_NOT_FOUND')
       }
 
-      if (
-        user.role === Roles.CLIENT &&
-        appointment.costumer &&
-        appointment.costumer !== user.id
-      ) {
-        throw new BadRequestException(
-          'YOU_ARE_NOT_THE_CLIENT_OF_THIS_APPOINTMENT',
-        )
+      if (user.role !== Roles.ADMIN) {
+        if (
+          user.role === Roles.BARBER &&
+          appointment.barberId &&
+          appointment.barberId !== user.id
+        ) {
+          throw new BadRequestException(
+            'YOU_ARE_NOT_THE_BARBER_OF_THIS_APPOINTMENT',
+          )
+        }
+
+        if (
+          user.role === Roles.CLIENT &&
+          appointment.costumer &&
+          appointment.costumer !== user.id
+        ) {
+          throw new BadRequestException(
+            'YOU_ARE_NOT_THE_CLIENT_OF_THIS_APPOINTMENT',
+          )
+        }
       }
+
+      const updatedAppointment = await this.appointmentModel
+        .findOneAndUpdate(
+          { _id: id },
+          { $set: updateAppointmentDto },
+          { new: true },
+        )
+        .session(session)
+        .exec()
+
+      await session.commitTransaction()
+      return updatedAppointment
+    } catch (error) {
+      await session.abortTransaction()
+      throw error
+    } finally {
+      session.endSession()
     }
-    const updatedAppointment = await this.appointmentModel
-      .findOneAndUpdate(
-        { _id: id },
-        { $set: updateAppointmentDto },
-        { new: true },
-      )
-      .exec()
-
-    return updatedAppointment
   }
 
   async remove(id: string, user: any) {
@@ -213,96 +230,94 @@ export class AppointmentService {
 
     const count = await this.appointmentModel.countDocuments(where)
 
-    let appointmentsQuery = this.appointmentModel.find(where)
-
-    if (filterMapped.sortBy) {
-      const order = filterMapped.order === 'desc' ? -1 : 1
-      appointmentsQuery = appointmentsQuery.sort({
-        [filterMapped.sortBy]: order,
+    let appointmentsQuery = await this.appointmentModel
+      .find(where)
+      .sort({
+        [filterMapped.sortBy]: filterMapped.order,
       })
-        .skip(filterMapped.page * filterMapped.limit)
-        .limit(filterMapped.limit)
-        .lean()
-        .exec()
+      .skip(filterMapped.page * filterMapped.limit)
+      .limit(filterMapped.limit)
+      .lean()
+      .exec()
 
-      return { count, appointmentsQuery }
+    return { count, appointmentsQuery }
+  }
+
+  async crateBarberSchedule(barberId: string, availability: BarberScheduleDTO) {
+    await this.checkBarber(barberId)
+
+    const existingSchedule = await this.scheduleModel
+      .findOne({ barber: barberId })
+      .exec()
+
+    if (existingSchedule) {
+      throw new ConflictException('BARBER_SCHEDULE_ALREADY_EXISTS')
     }
 
-  async createBarberSchedule(barberId: string, availability: BarberScheduleDTO) {
-      await this.checkBarber(barberId)
+    const newSchedule = new this.scheduleModel({
+      barber: barberId,
+      availability: availability.availability,
+    })
 
-      const existingSchedule = await this.scheduleModel
-        .findOne({ barber: barberId })
-        .exec()
-
-      if (existingSchedule) {
-        throw new ConflictException('BARBER_SCHEDULE_ALREADY_EXISTS')
-      }
-
-      const newSchedule = new this.scheduleModel({
-        barber: barberId,
-        availability: availability.availability,
-      })
-
-      return await newSchedule.save()
-    }
+    return await newSchedule.save()
+  }
 
   async getScheduleBarber(barberId: string, user: any) {
-      const barber = await this.checkBarber(barberId)
+    const barber = await this.checkBarber(barberId)
 
-      if (user.role !== Roles.ADMIN && barber.id !== barberId) {
-        throw new BadRequestException('UNAUTHORIZED')
-      }
-
-      const schedule = await this.scheduleModel
-        .findOne({ barber: barberId })
-        .lean()
-        .exec()
-
-      if (!schedule) {
-        throw new BadRequestException('BARBER_SCHEDULE_NOT_FOUND')
-      }
-
-      return schedule
+    if (user.role !== Roles.ADMIN && barber.id !== barberId) {
+      throw new BadRequestException('UNAUTHORIZED')
     }
 
-  async addBarberSchedule(
-      availability: DateAvailibility,
-      barberId: string,
-      user: any,
-    ) {
-      await this.checkBarber(barberId)
+    const schedule = await this.scheduleModel
+      .findOne({ barber: barberId })
+      .lean()
+      .exec()
 
-      if (req.user.role !== Roles.ADMIN && req.user.id !== barberId) {
-        throw new BadRequestException('UNAUTHORIZED')
-      }
-
-      const updatedSchedule = await this.scheduleModel
-        .findOneAndUpdate(
-          { barber: barberId },
-          { $pull: { availability: { $in: date } } }, // Remove as datas especificadas
-          { new: true },
-        )
-        .exec();
-
-      return updatedSchedule;
+    if (!schedule) {
+      throw new BadRequestException('BARBER_SCHEDULE_NOT_FOUND')
     }
+
+    return schedule
+  }
+
+  async updateBarberSchedule(
+    availability: BarberScheduleDTO,
+    barberId: string,
+    user: any,
+  ) {
+    const barber = await this.checkBarber(barberId)
+
+    if (user.role !== Roles.ADMIN && barber.id !== barberId) {
+      throw new BadRequestException('UNAUTHORIZED')
+    }
+
+    const updatedSchedule = await this.scheduleModel
+      .findOneAndUpdate(
+        { barber: barberId },
+        { $set: availability },
+        { new: true },
+      )
+      .exec()
+
+    return updatedSchedule
+  }
 
   async deleteBarberSchedule(barberId: string, user: any) {
-      const barber = await this.checkBarber(barberId)
+    const barber = await this.checkBarber(barberId)
 
-      if (user.role !== Roles.ADMIN && barber.id !== barberId) {
-        throw new BadRequestException('UNAUTHORIZED')
-      }
-
-      const schedule = await this.scheduleModel
-        .findOne({ barber: barberId })
-        .exec()
-
-      if (!schedule) {
-        throw new BadRequestException('BARBER_SCHEDULE_NOT_FOUND')
-      }
-
-      return await this.scheduleModel.deleteOne({ barber: barberId }).exec()
+    if (user.role !== Roles.ADMIN && barber.id !== barberId) {
+      throw new BadRequestException('UNAUTHORIZED')
     }
+
+    const schedule = await this.scheduleModel
+      .findOne({ barber: barberId })
+      .exec()
+
+    if (!schedule) {
+      throw new BadRequestException('BARBER_SCHEDULE_NOT_FOUND')
+    }
+
+    return await this.scheduleModel.deleteOne({ barber: barberId }).exec()
   }
+}
